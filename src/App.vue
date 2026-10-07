@@ -512,7 +512,10 @@ async function initialize() {
     const status = await vaultClient.status();
     if (revision !== vaultViewRevision) return;
     lifecycle.value = status;
-    if (lifecycle.value === "unlocked") await Promise.all([refreshItems(), refreshProviders(), refreshWindowsHelloStatus(), refreshAutofillSitePolicy()]);
+    if (lifecycle.value === "unlocked") {
+      await Promise.all([refreshItems(), refreshProviders(), refreshWindowsHelloStatus(), refreshAutofillSitePolicy()]);
+      await openDeepLinkedItem();
+    }
     else if (lifecycle.value === "locked") await refreshWindowsHelloStatus();
   } catch (error) {
     handleAuthError(error);
@@ -572,6 +575,7 @@ async function authenticate(action: () => Promise<VaultItem[]>) {
     rememberProtectionMode(auth.masterPassword ? "master-password" : "device-key");
     auth.masterPassword = "";
     auth.confirmation = "";
+    await openDeepLinkedItem();
   } catch (error) {
     handleAuthError(error);
   } finally {
@@ -681,6 +685,7 @@ async function unlockVaultWithWindowsHello() {
     lifecycle.value = "unlocked";
     rememberProtectionMode("device-key");
     await Promise.all([refreshItems(), refreshProviders(), refreshWindowsHelloStatus()]);
+    await openDeepLinkedItem();
   } catch (error) {
     handleAuthError(error);
   } finally {
@@ -1146,6 +1151,29 @@ function openVaultEdit(item: VaultItem) {
 
 function openVaultDetail(item: VaultItem) {
   vaultDetailItem.value = item;
+}
+
+// 深链：内联菜单的编辑入口用 index.html?item=<id> 打开指定条目详情。
+// 解锁后条目列表就绪才能找到对应项；找不到（已删除/无权限）就静默留在主页。
+const DEEP_LINK_ITEM_KEY = "item";
+let deepLinkItemConsumed = false;
+
+async function openDeepLinkedItem(): Promise<void> {
+  if (deepLinkItemConsumed) return;
+  let itemId = "";
+  try {
+    itemId = new URLSearchParams(window.location.search).get(DEEP_LINK_ITEM_KEY) || "";
+  } catch {
+    return;
+  }
+  deepLinkItemConsumed = true;
+  if (!itemId) return;
+  history.replaceState(null, "", window.location.pathname);
+  if (lifecycle.value !== "unlocked" || !vaultItems.value.length) return;
+  const item = vaultItems.value.find(candidate => candidate.id === itemId)
+    || archivedItems.value.find(candidate => candidate.id === itemId)
+    || deletedItems.value.find(candidate => candidate.id === itemId);
+  if (item) openVaultDetail(item);
 }
 
 function editFromDetail(item: VaultItem) {

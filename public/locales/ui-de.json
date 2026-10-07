@@ -2862,13 +2862,11 @@
   "聚焦登录表单时，在输入框旁显示匹配的登录项。": "Passende Logins neben dem ausgewählten Anmeldefeld anzeigen.",
   "关闭后仍可从工具栏插件填写。": "Bei deaktivierter Option bleibt Autofill über die Symbolleiste verfügbar.",
   "未能保存自动填充设置，请重试。": "Die Autofill-Einstellung konnte nicht gespeichert werden. Bitte erneut versuchen.",
-  "关闭自动填充菜单": "Autofill-Menü schließen",
   "此网站的登录项": "Logins für diese Website",
   "此网站暂无匹配的登录项。": "Keine passenden Logins für diese Website.",
   "解锁后查看此网站的登录项。": "Entsperren, um Logins für diese Website anzuzeigen.",
   "显示前 {0} 项，共 {1} 项": "{0} von {1} angezeigt",
   "含验证码": "Mit Authenticator",
-  "打开 Monica": "Monica öffnen",
   "自动填充菜单已失效，请重新选择输入框。": "Das Autofill-Menü ist abgelaufen. Wähle das Feld erneut aus.",
   "填写失败，请重新选择输入框后重试。": "Ausfüllen fehlgeschlagen. Wähle das Feld erneut aus und versuche es noch einmal.",
   "会话超时": "Sitzungs-Timeout",
@@ -2897,5 +2895,5 @@
   "自动锁定策略无效。": "Ungültige Auto-Sperrrichtlinie.",
   "需要 Native Host": "Erfordert Native Host",
   "此选项需要安装 Monica Native Host 才能加密保存会话密钥。": "Diese Option benötigt den Monica Native Host, um den Sitzungsschlüssel zu verschlüsseln.",
-  "未能连接 Monica Native Host。": "Der Monica Native Host ist nicht erreichbar."
-}
+  "未能连接 Monica Native Host。": "Der Monica Native Host ist nicht erreichbar.",
+  "在 Monica 中编辑 {0}": "{0} in Monica bearbeiten"}

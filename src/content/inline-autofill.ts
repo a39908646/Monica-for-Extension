@@ -7,7 +7,6 @@ import { createCurrentFieldContext } from "./field-signature";
 import { loginFieldRole, loginFieldScope } from "./login-field-role";
 import { inlineMenuPosition } from "./inline-position";
 import { INLINE_AUTOFILL_STYLES } from "./inline-styles";
-import { createMonicaLogo } from "./brand-logo";
 
 export const INLINE_AUTOFILL_HOST_ID = "monica-inline-autofill-host";
 
@@ -25,6 +24,7 @@ interface Handlers {
   query(sessionId: string): Promise<InlineAutofillResult>;
   fill(sessionId: string, itemId: string): Promise<unknown>;
   openManager(sessionId: string): Promise<unknown>;
+  editItem(sessionId: string, itemId: string): Promise<unknown>;
 }
 
 interface FieldSession {
@@ -153,19 +153,6 @@ export function installInlineAutofill(handlers: Handlers, rootDocument: Document
     panel.setAttribute("aria-modal", "false");
     i18n.attribute(panel, "aria-label", () => tr("表单旁自动填充"));
     i18n.attribute(panel, "lang", getUiLocale);
-    const header = rootDocument.createElement("header");
-    const logo = createMonicaLogo(rootDocument, 24);
-    const heading = rootDocument.createElement("strong");
-    heading.textContent = "Monica";
-    const label = rootDocument.createElement("span");
-    label.className = "label";
-    i18n.text(label, () => tr("自动填充"));
-    const close = button("close");
-    close.textContent = "×";
-    i18n.attribute(close, "aria-label", () => tr("关闭自动填充菜单"));
-    close.addEventListener("click", event => { if (event.isTrusted) dismiss(true); });
-    header.append(logo, heading, label, close);
-    panel.append(header);
     const list = rootDocument.createElement("div");
     list.className = "suggestions";
     list.setAttribute("role", "group");
@@ -184,6 +171,13 @@ export function installInlineAutofill(handlers: Handlers, rootDocument: Document
       hint.className = "hint";
       i18n.text(hint, () => result.status === "locked" && item.allowLockedAutofill ? tr("免解锁填写") : item.hasTotp ? tr("含验证码") : "↵");
       row.append(text, hint);
+      if (result.status === "unlocked") {
+        const edit = button("edit");
+        i18n.attribute(edit, "aria-label", () => tr("在 Monica 中编辑 {0}", { 0: item.title }));
+        i18n.text(edit, () => "✎");
+        edit.addEventListener("click", event => { if (event.isTrusted) void act(current, () => handlers.editItem(current.id, item.id)); });
+        row.append(edit);
+      }
       row.addEventListener("click", event => { if (event.isTrusted) void act(current, () => handlers.fill(current.id, item.id)); });
       list.append(row);
     }
@@ -205,10 +199,12 @@ export function installInlineAutofill(handlers: Handlers, rootDocument: Document
     status.setAttribute("role", "status");
     status.hidden = true;
     panel.append(status);
-    const open = button("open-manager");
-    i18n.text(open, () => result.status === "locked" ? tr("解锁 Monica") : tr("打开 Monica"));
-    open.addEventListener("click", event => { if (event.isTrusted) void act(current, () => handlers.openManager(current.id)); });
-    panel.append(open);
+    if (result.status === "locked") {
+      const open = button("open-manager");
+      i18n.text(open, () => tr("解锁 Monica"));
+      open.addEventListener("click", event => { if (event.isTrusted) void act(current, () => handlers.openManager(current.id)); });
+      panel.append(open);
+    }
     // Keep the field focused during a pointer selection; keyboard navigation remains native.
     panel.addEventListener("pointerdown", event => { if (event.isTrusted && event.button === 0) event.preventDefault(); });
     shadow.append(style, panel);
@@ -218,7 +214,7 @@ export function installInlineAutofill(handlers: Handlers, rootDocument: Document
       try { host.showPopover(); } catch { /* Older engines retain the fixed-position fallback. */ }
     }
     watchPosition(current);
-    if (current.focusRequested) shadow?.querySelector<HTMLButtonElement>(".suggestion,.open-manager")?.focus();
+    if (current.focusRequested) shadow?.querySelector<HTMLButtonElement>(".suggestion,.edit,.open-manager")?.focus();
   }
 
   function button(className: string) {

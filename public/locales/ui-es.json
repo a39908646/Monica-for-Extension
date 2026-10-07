@@ -2862,13 +2862,11 @@
   "聚焦登录表单时，在输入框旁显示匹配的登录项。": "Muestra los inicios de sesión coincidentes junto al campo seleccionado.",
   "关闭后仍可从工具栏插件填写。": "Al desactivarlo, puedes seguir rellenando desde la extensión de la barra de herramientas.",
   "未能保存自动填充设置，请重试。": "No se pudo guardar el ajuste de autorrelleno. Inténtalo de nuevo.",
-  "关闭自动填充菜单": "Cerrar menú de autorrelleno",
   "此网站的登录项": "Inicios de sesión de este sitio",
   "此网站暂无匹配的登录项。": "No hay inicios de sesión coincidentes para este sitio.",
   "解锁后查看此网站的登录项。": "Desbloquea para ver los inicios de sesión de este sitio.",
   "显示前 {0} 项，共 {1} 项": "Mostrando {0} de {1}",
   "含验证码": "Con autenticador",
-  "打开 Monica": "Abrir Monica",
   "自动填充菜单已失效，请重新选择输入框。": "El menú de autorrelleno ha caducado. Selecciona el campo de nuevo.",
   "填写失败，请重新选择输入框后重试。": "No se pudo rellenar. Selecciona el campo de nuevo e inténtalo otra vez.",
   "会话超时": "Tiempo de espera de sesión",
@@ -2897,5 +2895,5 @@
   "自动锁定策略无效。": "Política de bloqueo automático no válida.",
   "需要 Native Host": "Requiere Native Host",
   "此选项需要安装 Monica Native Host 才能加密保存会话密钥。": "Esta opción requiere el Monica Native Host para cifrar la clave de sesión.",
-  "未能连接 Monica Native Host。": "No se pudo conectar con el Monica Native Host."
-}
+  "未能连接 Monica Native Host。": "No se pudo conectar con el Monica Native Host.",
+  "在 Monica 中编辑 {0}": "Editar {0} en Monica"}

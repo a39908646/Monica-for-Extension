@@ -13,10 +13,21 @@ let controller: ReturnType<typeof installInlineAutofill>;
 let changed: (changes: Record<string, chrome.storage.StorageChange>, area: string) => void;
 let query: ReturnType<typeof vi.fn<(id: string) => Promise<InlineAutofillResult>>>;
 let fill: ReturnType<typeof vi.fn<(sessionId: string, itemId: string) => Promise<unknown>>>;
+let openManager: ReturnType<typeof vi.fn<(sessionId: string) => Promise<unknown>>>;
+let editItem: ReturnType<typeof vi.fn<(sessionId: string, itemId: string) => Promise<unknown>>>;
 let shadow: ShadowRoot | undefined;
 const result = (id: string, title = "account"): InlineAutofillResult => ({ sessionId: id, enabled: true, status: "unlocked", total: 1, candidates: [{ id: "item", title, username: "synthetic-user", hasTotp: false, allowLockedAutofill: false }] });
 const input = (id = "user") => dom.window.document.getElementById(id) as HTMLInputElement;
 const host = () => dom.window.document.getElementById(INLINE_AUTOFILL_HOST_ID);
+// jsdom 的 dispatchEvent 会无条件把 isTrusted 置 false（规范行为）；
+// 绕过包装层直接调用 impl 的 _dispatch 以伪造受信事件。
+const trustedClick = (element: Element): void => {
+  const implSymbol = Object.getOwnPropertySymbols(element)[0];
+  const event = new dom.window.MouseEvent("click", { bubbles: true });
+  const eventImpl = (event as unknown as Record<symbol, { isTrusted: boolean }>)[Object.getOwnPropertySymbols(event)[0]];
+  eventImpl.isTrusted = true;
+  (element as unknown as Record<symbol, { _dispatch: (impl: unknown) => void }>)[implSymbol]._dispatch(eventImpl);
+};
 
 beforeEach(() => {
   dom = new JSDOM('<!doctype html><html><body><form><input id="user" autocomplete="username"><input id="password" type="password" autocomplete="current-password"></form><button id="outside">Outside</button></body></html>', { url: "https://example.test/login", pretendToBeVisual: true });
@@ -32,7 +43,9 @@ beforeEach(() => {
   } });
   query = vi.fn(async id => result(id));
   fill = vi.fn(async () => undefined);
-  controller = installInlineAutofill({ query, fill, openManager: vi.fn() }, dom.window.document);
+  openManager = vi.fn(async () => undefined);
+  editItem = vi.fn(async () => undefined);
+  controller = installInlineAutofill({ query, fill, openManager, editItem }, dom.window.document);
 });
 afterEach(() => { controller.dispose(); dom.window.close(); vi.restoreAllMocks(); vi.unstubAllGlobals(); shadow = undefined; });
 
@@ -95,5 +108,34 @@ describe("inline menu lifecycle and request boundaries", () => {
     expect(chrome.storage.onChanged.removeListener).toHaveBeenCalledWith(changed);
     input("password").focus();
     expect(query).toHaveBeenCalledOnce();
+  });
+  it("offers a per-item edit entry when unlocked and opens the manager with that item", async () => {
+    input().focus();
+    await vi.waitFor(() => expect(host()).toBeTruthy());
+    const menu = shadow!;
+    expect(menu.querySelector("header")).toBeNull();
+    expect(menu.querySelector(".open-manager")).toBeNull();
+    const edit = menu.querySelector(".edit") as HTMLButtonElement;
+    expect(edit).toBeTruthy();
+    expect(edit.textContent).toBeTruthy();
+    const fillButton = menu.querySelector(".suggestion") as HTMLButtonElement;
+    fillButton.click();
+    expect(fill).not.toHaveBeenCalled();
+    // act() 要求输入框仍持有焦点（valid() 守卫）；jsdom 合成点击不会走 pointerdown 阻止默认的焦点转移。
+    input().focus();
+    trustedClick(edit);
+    await vi.waitFor(() => expect(editItem).toHaveBeenCalledWith(expect.stringMatching(/^[a-f0-9-]{36}$/), "item"));
+  });
+  it("omits the edit entry when locked and keeps only the unlock action", async () => {
+    query.mockImplementation(async id => ({ ...result(id), status: "locked" as const }));
+    input().focus();
+    await vi.waitFor(() => expect(host()).toBeTruthy());
+    const menu = shadow!;
+    expect(menu.querySelector(".edit")).toBeNull();
+    const open = menu.querySelector(".open-manager") as HTMLButtonElement;
+    expect(open).toBeTruthy();
+    input().focus();
+    trustedClick(open);
+    await vi.waitFor(() => expect(openManager).toHaveBeenCalledOnce());
   });
 });

@@ -13,7 +13,8 @@ import type { InlineAutofillResult } from "../autofill/inline-contract";
 const inlineAutofill = installInlineAutofill({
   query: sessionId => sendRuntime<InlineAutofillResult>({ type: "AUTOFILL_INLINE_QUERY", sessionId }),
   fill: (sessionId, itemId) => sendRuntime({ type: "AUTOFILL_INLINE_FILL", sessionId, itemId }),
-  openManager: sessionId => sendRuntime({ type: "AUTOFILL_INLINE_OPEN", sessionId })
+  openManager: sessionId => sendRuntime({ type: "AUTOFILL_INLINE_OPEN", sessionId }),
+  editItem: (sessionId, itemId) => sendRuntime({ type: "AUTOFILL_INLINE_EDIT", sessionId, itemId })
 });
 
 chrome.runtime.onMessage.addListener((message: { type?: string; credential?: FillCredentialInput; context?: SavePromptContext; wallet?: WalletFillPayload; expectedOrigin?: string; candidateId?: string; sessionId?: string }, sender, sendResponse) => {

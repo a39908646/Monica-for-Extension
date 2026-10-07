@@ -230,6 +230,7 @@ const WEB_PAGE_REQUEST_TYPES = new Set<ExtensionRequest["type"]>([
   "AUTOFILL_INLINE_QUERY",
   "AUTOFILL_INLINE_FILL",
   "AUTOFILL_INLINE_OPEN",
+  "AUTOFILL_INLINE_EDIT",
   "CREDENTIAL_USERNAME_REMEMBER",
   "CREDENTIAL_CAPTURE",
   "CREDENTIAL_PENDING",
@@ -522,6 +523,18 @@ async function handleRequest(request: ExtensionRequest, sender: chrome.runtime.M
       const target = await resolveSensitiveFillTarget(source.tabId, source.frameId, source.documentId, source.origin);
       await currentFieldRecord(source.tabId, target, request.sessionId);
       await chrome.tabs.create({ url: chrome.runtime.getURL("index.html") });
+      return { opened: true };
+    }
+    case "AUTOFILL_INLINE_EDIT": {
+      const source = assertWebPageSender(sender);
+      assertInlineSessionId(request.sessionId);
+      if (typeof request.itemId !== "string" || !request.itemId || request.itemId.length > 512) throw new Error("登录项标识无效。");
+      if (!await readInlineAutofillEnabled()) throw new Error("自动填充菜单已失效，请重新选择输入框。");
+      const editTarget = await resolveSensitiveFillTarget(source.tabId, source.frameId, source.documentId, source.origin);
+      await currentFieldRecord(source.tabId, editTarget, request.sessionId);
+      const editUrl = new URL(chrome.runtime.getURL("index.html"));
+      editUrl.searchParams.set("item", request.itemId);
+      await chrome.tabs.create({ url: editUrl.href });
       return { opened: true };
     }
     case "VAULT_MATCH_LOGINS": {
