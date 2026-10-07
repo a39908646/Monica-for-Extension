@@ -58,9 +58,26 @@ export function isSecureSensitivePageUrl(raw: string): boolean {
   } catch {
     return false;
   }
-  return url.protocol === "https:" || (url.protocol === "http:" && isLoopbackHost(url.hostname));
+  return url.protocol === "https:" || (url.protocol === "http:" && isLanHost(url.hostname));
 }
 
-function isLoopbackHost(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "[::1]" || /^127(?:\.\d{1,3}){3}$/.test(hostname);
+// 局域网网段放行：IPv4 回环 + RFC1918 私有网段 + 链路本地，IPv6 唯一本地（ULA）+ 链路本地。
+export function isLanHost(hostname: string): boolean {
+  if (hostname === "localhost" || hostname === "[::1]") return true;
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
+  if (ipv4) {
+    const octets = ipv4.slice(1).map(Number);
+    if (octets.some((value) => value > 255)) return false;
+    const [a, b] = octets;
+    if (a === 10) return true; // 10.0.0.0/8
+    if (a === 127) return true; // 127.0.0.0/8 回环
+    if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
+    if (a === 192 && b === 168) return true; // 192.168.0.0/16
+    if (a === 169 && b === 254) return true; // 169.254.0.0/16 链路本地
+    return false;
+  }
+  const host = hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  if (/^f[cd][0-9a-f]{2}:/.test(host)) return true; // fd00::/8 唯一本地
+  if (/^fe[89ab][0-9a-f]:/.test(host)) return true; // fe80::/10 链路本地
+  return false;
 }
