@@ -39,6 +39,10 @@ function effectiveUriRules(item: LoginItem): LoginUriRule[] {
 function uriRuleMatchScore(rule: LoginUriRule, page: URL): number {
   const stored = rule.uri.trim();
   if (!stored || rule.matchType === "never") return 0;
+  if (rule.matchType === "host") {
+    const storedAuthority = comparableAuthority(stored);
+    return storedAuthority && storedAuthority === page.host.toLocaleLowerCase() ? 130 : 0;
+  }
   if (rule.matchType === "exact") return comparableUrl(stored) === page.href ? 140 : 0;
   if (rule.matchType === "starts-with") return page.href.startsWith(comparableUrl(stored, false)) ? 120 : 0;
   if (rule.matchType === "regex") return matchesSafeRegex(stored, page.href) ? 115 : 0;
@@ -46,6 +50,13 @@ function uriRuleMatchScore(rule: LoginUriRule, page: URL): number {
   const storedHost = normalizeHost(stored);
   const pageHost = normalizeHostname(page.hostname);
   if (!storedHost || !pageHost) return 0;
+  // IP 字面量没有可注册域名，端口是区分同一主机上不同服务的唯一依据。
+  // 规则显式写了端口时按“主机:端口”比较，避免 192.168.1.122:4000 命中 :9208。
+  if (isIpLiteral(storedHost) && hasExplicitPort(stored)) {
+    const storedAuthority = comparableAuthority(stored);
+    if (!storedAuthority || storedAuthority !== page.host.toLocaleLowerCase()) return 0;
+    return rule.matchType === "domain" ? 110 : 100;
+  }
   if (rule.matchType === "domain") {
     if (storedHost === pageHost) return 110;
     return pageHost.endsWith(`.${storedHost}`) ? 90 : 0;
@@ -74,6 +85,28 @@ function comparableUrl(value: string, ensureTrailingSlash = true): string {
   } catch {
     return candidate;
   }
+}
+
+function comparableAuthority(value: string): string {
+  const candidate = value.trim();
+  if (!candidate) return "";
+  try {
+    return new URL(candidate.includes("://") ? candidate : `https://${candidate}`).host.toLocaleLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function hasExplicitPort(value: string): boolean {
+  try {
+    return new URL(value.trim().includes("://") ? value.trim() : `https://${value.trim()}`).port !== "";
+  } catch {
+    return false;
+  }
+}
+
+function isIpLiteral(host: string): boolean {
+  return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) || host.includes(":");
 }
 
 function matchesSafeRegex(pattern: string, value: string): boolean {

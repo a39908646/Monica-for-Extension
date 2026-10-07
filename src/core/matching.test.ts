@@ -25,6 +25,19 @@ describe("login URL matching", () => {
     expect(score("example.com", "never", "https://example.com")).toBe(0);
   });
 
+  it("matches hosts with their port and keeps explicit IP ports scoped", () => {
+    expect(score("http://192.168.1.122:4000", "host", "http://192.168.1.122:4000/login")).toBe(130);
+    expect(score("http://192.168.1.122:4000", "host", "http://192.168.1.122:9208/login")).toBe(0);
+    expect(score("example.com:8443", "host", "https://example.com:8443/login")).toBe(130);
+    expect(score("example.com", "host", "https://example.com:8443/login")).toBe(0);
+    expect(score("https://example.com", "host", "https://example.com/login")).toBe(130);
+    expect(score("http://192.168.1.122:4000", "domain", "http://192.168.1.122:4000/login")).toBe(110);
+    expect(score("http://192.168.1.122:4000", "base-domain", "http://192.168.1.122:9208/login")).toBe(0);
+    expect(score("http://192.168.1.122:4000", "base-domain", "http://192.168.1.122:4000/login")).toBe(100);
+    expect(score("192.168.1.122", "base-domain", "http://192.168.1.122:9208/login")).toBe(100);
+    expect(score("example.com", "base-domain", "https://example.com:8443/login")).toBe(100);
+  });
+
   it("rejects invalid or potentially catastrophic regular expressions", () => {
     expect(score("(", "regex", "https://example.com")).toBe(0);
     expect(score("(a+)+$", "regex", `https://example.com/${"a".repeat(500)}!`)).toBe(0);
