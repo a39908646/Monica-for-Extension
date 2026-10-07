@@ -14,6 +14,7 @@ const customValue = ref(15);
 const customUnit = ref<CustomUnit>("minutes");
 const current = ref<VaultTimeoutSettings>({ policy: "minutes", minutes: 15 });
 const persistentAvailable = ref(false);
+const capabilityError = ref("");
 const capabilitiesReady = ref(false);
 const ready = ref(false);
 const busy = ref(false);
@@ -99,7 +100,10 @@ onMounted(async () => {
   try {
     const [settings, capabilities] = await Promise.all([
       vaultClient.getVaultTimeoutSettings(),
-      vaultClient.getVaultTimeoutCapabilities().catch(() => ({ persistentSessions: false }))
+      vaultClient.getVaultTimeoutCapabilities().catch((cause: unknown) => {
+        capabilityError.value = failureMessage(cause, tr('未能连接 Monica Native Host。'));
+        return { persistentSessions: false };
+      })
     ]);
     apply(settings);
     persistentAvailable.value = capabilities.persistentSessions;
@@ -129,6 +133,7 @@ onMounted(async () => {
       </select>
     </label>
     <p v-if="capabilitiesReady && !persistentAvailable" class="vault-timeout-note">{{ tr('此选项需要安装 Monica Native Host 才能加密保存会话密钥。') }}</p>
+    <p v-if="capabilityError" class="vault-timeout-note" role="status">{{ capabilityError }}</p>
     <div v-if="choice === 'custom'" class="vault-timeout-custom">
       <label>
         <span>{{ tr('自定义时长') }}</span>

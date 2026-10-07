@@ -14,7 +14,8 @@ export class NativeDpapiSessionSealer implements VaultSessionSealer {
 
   async available(): Promise<boolean> {
     try {
-      return (await this.client.hello()).supportsSessionSeal === true;
+      // A cold Host start initializes the MDBX2 runtime before it answers.
+      return (await this.client.hello(20_000)).supportsSessionSeal === true;
     } catch {
       return false;
     }

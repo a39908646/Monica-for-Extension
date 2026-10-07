@@ -2896,5 +2896,6 @@
   "自动锁定时间无效。": "자동 잠금 시간이 올바르지 않습니다.",
   "自动锁定策略无效。": "자동 잠금 정책이 올바르지 않습니다.",
   "需要 Native Host": "Native Host 필요",
-  "此选项需要安装 Monica Native Host 才能加密保存会话密钥。": "이 옵션은 세션 키를 암호화하기 위해 Monica Native Host가 필요합니다."
+  "此选项需要安装 Monica Native Host 才能加密保存会话密钥。": "이 옵션은 세션 키를 암호화하기 위해 Monica Native Host가 필요합니다.",
+  "未能连接 Monica Native Host。": "Monica Native Host에 연결하지 못했습니다."
 }

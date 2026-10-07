@@ -2896,5 +2896,6 @@
   "自动锁定时间无效。": "Invalid auto-lock duration.",
   "自动锁定策略无效。": "Invalid auto-lock policy.",
   "需要 Native Host": "Requires Native Host",
-  "此选项需要安装 Monica Native Host 才能加密保存会话密钥。": "This option needs the Monica Native Host to encrypt the session key."
+  "此选项需要安装 Monica Native Host 才能加密保存会话密钥。": "This option needs the Monica Native Host to encrypt the session key.",
+  "未能连接 Monica Native Host。": "Could not reach the Monica Native Host."
 }
