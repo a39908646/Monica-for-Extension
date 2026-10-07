@@ -124,3 +124,19 @@ The Host writes protocol frames only to stdout. Diagnostics go to stderr and mus
 - 附加 entropy 固定为 `monica.extension.secureVault.session.v1`，并始终使用 `CRYPTPROTECT_UI_FORBIDDEN`。
 - 边界说明：DPAPI 信任 Windows 登录会话，因此以同一用户身份运行的任何程序都能解开同一个 blob。该机制只保护静态存储（离线磁盘、其他账户、被复制的 profile 目录），不防御同账户恶意程序；这正是不选「从不锁定」时的既有取舍。
 - Host 不保存、不记录也不向其他调用方转交该密钥；解封失败时扩展按“已锁定”处理（fail-closed）。
+
+### 其他 Chromium 分支（Helium 等）
+
+`install-host.ps1` 只写入 Chrome 与 Edge 的注册表键。其他 Chromium 分支使用自己的 vendor 路径，例如 Helium（imput）为：
+
+```powershell
+$manifest = Join-Path $env:LOCALAPPDATA "MonicaExtensionMDBX2com.monica_pass.mdbx2.json"
+$helloManifest = Join-Path $env:LOCALAPPDATA "MonicaExtensionMDBX2com.monica_pass.windows_hello.json"
+reg add "HKCUSoftware
+et.imput.heliumNativeMessagingHostscom.monica_pass.mdbx2" /ve /t REG_SZ /d $manifest /f
+reg add "HKCUSoftware
+et.imput.heliumNativeMessagingHostscom.monica_pass.windows_hello" /ve /t REG_SZ /d $helloManifest /f
+```
+
+注册表默认值指向的清单里 `allowed_origins` 必须恰好是该浏览器的 `chrome-extension://<id>/`；注册后需完全退出并重新启动浏览器。
+
