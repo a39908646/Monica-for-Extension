@@ -2888,11 +2888,13 @@
   "从不自动锁定": "Sperrt nie automatisch",
   "{0} 分钟无操作后锁定": "Sperrt nach {0} Minuten Inaktivität",
   "{0} 小时无操作后锁定": "Sperrt nach {0} Stunden Inaktivität",
-  "以你的系统账户运行的其他程序（包括恶意软件与备份工具）可以读取该密钥；管理员账户、系统账户或能直接读取磁盘的人同样可以。": "Andere Programme, die unter deinem Systemkonto laufen – einschließlich Schadsoftware und Backup-Tools – können diesen Schlüssel lesen; ebenso Administratoren, Systemkonten oder wer direkten Zugriff auf den Datenträger hat.",
+  "会话密钥由 Windows DPAPI 加密后保存在浏览器本地存储中，不会明文落盘；但 DPAPI 信任你的 Windows 登录会话，以你的账户运行的任何程序仍可解密该密钥，管理员账户或能直接读取磁盘的人同样可以。": "Der Sitzungsschlüssel wird mit Windows DPAPI verschlüsselt, bevor er im lokalen Browserspeicher abgelegt wird, also nie im Klartext. DPAPI vertraut deiner Windows-Anmeldung, daher kann jedes unter deinem Konto laufende Programm ihn weiterhin entschlüsseln – ebenso Administratoren oder wer direkten Zugriff auf den Datenträger hat.",
   "其他选项只把会话密钥保存在浏览器会话存储中，关闭浏览器后自动清除。": "Andere Optionen halten den Sitzungsschlüssel nur im Sitzungsspeicher; er wird beim Schließen des Browsers gelöscht.",
   "会话超时设置已保存。": "Sitzungs-Timeout gespeichert.",
   "未能保存会话超时设置，请重试。": "Sitzungs-Timeout konnte nicht gespeichert werden. Erneut versuchen.",
   "未能读取会话超时设置。": "Sitzungs-Timeout konnte nicht gelesen werden.",
   "自动锁定时间无效。": "Ungültige Auto-Sperrzeit.",
-  "自动锁定策略无效。": "Ungültige Auto-Sperrrichtlinie."
+  "自动锁定策略无效。": "Ungültige Auto-Sperrrichtlinie.",
+  "需要 Native Host": "Erfordert Native Host",
+  "此选项需要安装 Monica Native Host 才能加密保存会话密钥。": "Diese Option benötigt den Monica Native Host, um den Sitzungsschlüssel zu verschlüsseln."
 }

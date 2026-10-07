@@ -114,3 +114,13 @@ The installer writes only under the current user's `%LOCALAPPDATA%` and `HKCU`. 
 The native-host manifest contains the absolute executable path and only installer-supplied exact extension origins. The installer rejects malformed IDs. Chrome and Edge registration stays per user and does not require administrator privileges.
 
 The Host writes protocol frames only to stdout. Diagnostics go to stderr and must never contain credentials, decrypted payloads, epoch keys, integrity keys, transfer ciphertext or user field values. Raw SQL is not exposed.
+
+## 会话密钥保护（session.seal / session.unseal）
+
+扩展的「会话超时」策略选择「浏览器重启时」或「从不」时，会把会话密钥交给 Host 用 Windows DPAPI（当前用户范围）加密后再写入扩展的 `storage.local`，磁盘上不会出现明文密钥。
+
+- `session.seal`：`{ plaintextBase64 }` → `{ sealedBase64 }`，输入上限 128 字节（会话密钥为 32 字节）。
+- `session.unseal`：`{ sealedBase64 }` → `{ plaintextBase64 }`，输入上限 4 KiB。
+- 附加 entropy 固定为 `monica.extension.secureVault.session.v1`，并始终使用 `CRYPTPROTECT_UI_FORBIDDEN`。
+- 边界说明：DPAPI 信任 Windows 登录会话，因此以同一用户身份运行的任何程序都能解开同一个 blob。该机制只保护静态存储（离线磁盘、其他账户、被复制的 profile 目录），不防御同账户恶意程序；这正是不选「从不锁定」时的既有取舍。
+- Host 不保存、不记录也不向其他调用方转交该密钥；解封失败时扩展按“已锁定”处理（fail-closed）。

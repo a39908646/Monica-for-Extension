@@ -34,6 +34,7 @@ import { BitwardenFolderError, BitwardenFolderService, type BitwardenFolderMutat
 import { BitwardenCollectionError, BitwardenCollectionService, type BitwardenCollectionMutationResult } from "../providers/bitwarden/bitwarden-collections";
 import { BitwardenSendError, BitwardenSendService, type BitwardenSendFileInput } from "../providers/bitwarden/bitwarden-sends";
 import { Mdbx2NativeClient, createChromeMdbx2NativeRuntime } from "../providers/mdbx2/native-client";
+import { NativeDpapiSessionSealer } from "../providers/mdbx2/native-session-sealer";
 import { MDBX2_MAX_BINARY_CHUNK_BYTES, MDBX2_WINDOWS_HELLO_PROTOCOL_VERSION, MDBX2_WINDOWS_HELLO_RP_ID, Mdbx2NativeHostError, type Mdbx2SyncStateStatus, type Mdbx2WindowsHelloStatus } from "../providers/mdbx2/native-contract";
 import { Mdbx2Provider } from "../providers/mdbx2/mdbx2-provider";
 import { Mdbx2BatchTransferCoordinator, type Mdbx2BatchTransferProgress, type Mdbx2BatchTransferStatus } from "../providers/mdbx2/mdbx2-batch-transfer-coordinator";
@@ -83,7 +84,9 @@ import { runtimeInfo } from "../runtime/version";
 
 const LEGACY_VAULT_KEY = "monica.extension.credentials.v1";
 const AUTO_LOCK_ALARM = "monica-vault-auto-lock";
-const service = new SecureVaultService(new IndexedDbVaultStorage(), new ChromeVaultSessionStore(), () => Date.now(), new ChromeVaultDeviceKeyStore(), new LockedAutofillCache(new IndexedDbLockedAutofillStorage()));
+const windowsHelloNativeClient = new Mdbx2NativeClient(createChromeMdbx2NativeRuntime(), undefined, "com.monica_pass.windows_hello", "Monica Windows Hello");
+const sessionSealNativeClient = new Mdbx2NativeClient(createChromeMdbx2NativeRuntime(), undefined, "com.monica_pass.mdbx2", "Monica 本机会话保护");
+const service = new SecureVaultService(new IndexedDbVaultStorage(), new ChromeVaultSessionStore(new NativeDpapiSessionSealer(sessionSealNativeClient)), () => Date.now(), new ChromeVaultDeviceKeyStore(), new LockedAutofillCache(new IndexedDbLockedAutofillStorage()));
 const providers = new ProviderRegistry();
 const monicaWebDavProvider = new MonicaWebDavProvider();
 providers.register(monicaWebDavProvider);
@@ -91,7 +94,6 @@ const bitwardenProvider = new BitwardenProvider();
 providers.register(bitwardenProvider);
 const bitwardenDurableSync = new BitwardenDurableSyncCoordinator(bitwardenProvider, service);
 const mdbx2NativeClient = new Mdbx2NativeClient(createChromeMdbx2NativeRuntime());
-const windowsHelloNativeClient = new Mdbx2NativeClient(createChromeMdbx2NativeRuntime(), undefined, "com.monica_pass.windows_hello", "Monica Windows Hello");
 const mdbx2SyncCoordinator = new Mdbx2SyncCoordinator(mdbx2NativeClient);
 const mdbx2Provider = new Mdbx2Provider(mdbx2NativeClient, mdbx2SyncCoordinator);
 providers.register(mdbx2Provider);
@@ -582,6 +584,9 @@ async function handleRequest(request: ExtensionRequest, sender: chrome.runtime.M
       await lockOnImmediateTimeout();
       return timeout;
     }
+    case "VAULT_TIMEOUT_CAPABILITIES":
+      assertManagerPage(sender);
+      return { persistentSessions: await service.supportsPersistentSessions() };
     case "AUTOFILL_FIELD_POLICY_LIST":
       assertManagerPage(sender);
       return service.listAutofillBlockedFieldSignatures();

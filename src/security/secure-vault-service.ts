@@ -256,7 +256,7 @@ export class SecureVaultService {
       try {
         const session = await this.sessions.read();
         let key: CryptoKey;
-        if (session && session.expiresAt > this.now()) key = await importVaultKey(session.rawKey);
+        if (session?.rawKey && session.expiresAt > this.now()) key = await importVaultKey(session.rawKey);
         else if (envelope.kdf.name === "DEVICE-KEY") key = await this.deviceKey(envelope.kdf);
         else return undefined;
         const state = await decryptVaultState(envelope, key);
@@ -498,10 +498,16 @@ export class SecureVaultService {
     return vaultTimeoutSettingsOf((await this.readState()).settings);
   }
 
+  /** Whether this machine can protect a persisted session key at rest. */
+  async supportsPersistentSessions(): Promise<boolean> {
+    return this.sessions.supportsPersistentSessions();
+  }
+
   async setVaultTimeoutSettings(input: VaultTimeoutSettings): Promise<VaultTimeoutSettings> {
     const policy = requireVaultTimeoutPolicy(input.policy);
     const minutes = input.minutes;
     if (!Number.isInteger(minutes) || minutes < MIN_AUTO_LOCK_MINUTES || minutes > MAX_AUTO_LOCK_MINUTES) throw new Error("自动锁定时间无效。");
+    if (persistentTimeout(policy) && !await this.sessions.supportsPersistentSessions()) throw new Error("此选项需要安装 Monica Native Host 才能加密保存会话密钥。");
     return this.runExclusive(async () => {
       const { state, envelope, key } = await this.mutableContext();
       state.settings.vaultTimeoutPolicy = policy;
@@ -672,7 +678,7 @@ export class SecureVaultService {
       const envelope = await this.requireEnvelope();
       const envelopeVersion = JSON.stringify(envelope);
       const session = await this.sessions.read();
-      if (session && session.expiresAt > this.now()) {
+      if (session?.rawKey && session.expiresAt > this.now()) {
         const state = await decryptVaultState(envelope, await importVaultKey(session.rawKey));
         await this.touchSession(vaultTimeoutSettingsOf(state.settings));
         return {
@@ -1284,7 +1290,7 @@ export class SecureVaultService {
   private async unlockedContext(): Promise<{ envelope: VaultEnvelope; key: CryptoKey }> {
     const envelope = await this.requireEnvelope();
     const session = await this.sessions.read();
-    if (!session || session.expiresAt <= this.now()) {
+    if (!session?.rawKey || session.expiresAt <= this.now()) {
       await this.sessions.clear();
       throw new VaultLockedError();
     }

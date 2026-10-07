@@ -6,7 +6,7 @@ const hostRoot = resolve(root, "native", "mdbx2-host");
 const coreRevision = "974c517465e7b6cac0947d2d59875aa4211fa16b";
 const expectedSource = `git+https://github.com/Monica-Pass/Mdbx.git?rev=${coreRevision}#${coreRevision}`;
 
-const [manifest, lockfile, toolchain, hostManifest, installer, uninstaller, runtime, windowsHello, contract] = await Promise.all([
+const [manifest, lockfile, toolchain, hostManifest, installer, uninstaller, runtime, windowsHello, sessionSeal, contract] = await Promise.all([
   readFile(resolve(hostRoot, "Cargo.toml"), "utf8"),
   readFile(resolve(hostRoot, "Cargo.lock"), "utf8"),
   readFile(resolve(hostRoot, "rust-toolchain.toml"), "utf8"),
@@ -15,6 +15,7 @@ const [manifest, lockfile, toolchain, hostManifest, installer, uninstaller, runt
   readFile(resolve(hostRoot, "uninstall-host.ps1"), "utf8"),
   readFile(resolve(hostRoot, "src", "runtime.rs"), "utf8"),
   readFile(resolve(hostRoot, "src", "windows_hello.rs"), "utf8"),
+  readFile(resolve(hostRoot, "src", "session_seal.rs"), "utf8"),
   readFile(resolve(root, "src", "providers", "mdbx2", "native-contract.ts"), "utf8")
 ]);
 
@@ -93,3 +94,10 @@ for (const required of ["MDBX2_MAX_ATTACHMENT_BYTES", "MDBX2_MAX_ATTACHMENT_MEMO
 }
 
 console.log(`Verified MDBX2 Host pin ${coreRevision}, Rust 1.86.0, UniFFI 0.31.1, exact-origin installer, Windows Hello foreground-window and damaged-binding boundaries, Collection, diagnostics, Tiga posture, history read/revert, snapshot prune, conflict and attachment boundaries, and manifest template.`);
+
+for (const required of ['"session.seal"', '"session.unseal"', '"supportsSessionSeal": cfg!(windows)']) {
+  if (!runtime.includes(required)) throw new Error("MDBX2 Host session seal boundary is missing " + required + ".");
+}
+for (const required of ["MAX_PLAINTEXT_BYTES", "MAX_SEALED_BYTES", "CryptProtectData", "CryptUnprotectData", "CRYPTPROTECT_UI_FORBIDDEN", "zeroize"]) {
+  if (!sessionSeal.includes(required)) throw new Error("MDBX2 Host session seal module is missing " + required + ".");
+}

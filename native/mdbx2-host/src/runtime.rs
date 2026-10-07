@@ -663,6 +663,8 @@ impl HostRuntime {
             "hello.enroll" => self.windows_hello.enroll(params),
             "hello.verify" => self.windows_hello.verify(params),
             "hello.revoke" => self.windows_hello.revoke(params),
+            "session.seal" => crate::session_seal::seal(params),
+            "session.unseal" => crate::session_seal::unseal(params),
             _ if cloud_sync::supports(method) => cloud_sync::handle(self, method, params),
             _ => Err(RpcFailure::new(
                 "method-unsupported",
@@ -726,6 +728,8 @@ impl HostRuntime {
             "supportsWindowsHello": cfg!(windows),
             "windowsHelloProtocolVersion": crate::windows_hello::HELLO_PROTOCOL_VERSION,
             "windowsHelloRpId": crate::windows_hello::HELLO_RP_ID,
+            "supportsSessionSeal": cfg!(windows),
+            "sessionSealProtocolVersion": crate::session_seal::SESSION_SEAL_PROTOCOL_VERSION,
             "storageProfile": capabilities.storage_profile,
             "syncProfile": capabilities.sync_profile,
             "syncProtocolVersion": capabilities.sync_protocol_version,

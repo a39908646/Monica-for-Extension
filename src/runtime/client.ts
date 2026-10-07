@@ -92,6 +92,7 @@ export const vaultClient = {
   setAutofillSitePolicy: (policy: AutofillSitePolicy) => send<AutofillSitePolicy>({ type: "AUTOFILL_SITE_POLICY_SET", policy }),
   getVaultTimeoutSettings: () => send<VaultTimeoutSettings>({ type: "VAULT_TIMEOUT_GET" }),
   setVaultTimeoutSettings: (settings: VaultTimeoutSettings) => send<VaultTimeoutSettings>({ type: "VAULT_TIMEOUT_SET", settings }),
+  getVaultTimeoutCapabilities: () => send<{ persistentSessions: boolean }>({ type: "VAULT_TIMEOUT_CAPABILITIES" }),
   listAutofillBlockedFields: () => send<BlockedFieldSignatureRecord[]>({ type: "AUTOFILL_FIELD_POLICY_LIST" }),
   isAutofillFieldBlocked: (signature: string) => send<boolean>({ type: "AUTOFILL_FIELD_POLICY_STATUS", signature }),
   setCurrentAutofillFieldBlocked: (blocked: boolean, tabId: number, frameId?: number, documentId?: string, expectedOrigin?: string) =>

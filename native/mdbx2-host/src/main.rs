@@ -2,6 +2,7 @@
 
 mod cloud_sync;
 mod runtime;
+mod session_seal;
 mod windows_hello;
 
 use runtime::{HostRuntime, RpcFailure, PROTOCOL_VERSION};

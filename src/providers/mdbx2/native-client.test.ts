@@ -41,6 +41,7 @@ import {
   MDBX2_MAX_VAULT_TIGA_UNLOCK_METHODS,
   MDBX2_NATIVE_HOST_NAME,
   MDBX2_NATIVE_PROTOCOL_VERSION,
+  MDBX2_SESSION_SEAL_PROTOCOL_VERSION,
   MDBX2_SYNC_PROTOCOL_VERSION,
   MDBX2_SYNC_SEGMENT_PAGE_SIZE,
   MDBX2_WINDOWS_HELLO_PROTOCOL_VERSION,
@@ -285,6 +286,51 @@ describe("MDBX2 Native Messaging client", () => {
       method: "host.hello",
       params: {}
     }]);
+    client.close();
+  });
+
+  it("seals and unseals the persisted session key through the Native Host", async () => {
+    const runtime = new FakeRuntime();
+    runtime.port.onPost = (message) => {
+      const request = message as { requestId: string; method: string; params: Record<string, unknown> };
+      const result = request.method === "session.seal"
+        ? { sealedBase64: "c2VhbGVkLWJsb2I=" }
+        : { plaintextBase64: "cmF3LWtleQ==" };
+      runtime.port.onMessage.emit({
+        protocol: MDBX2_NATIVE_PROTOCOL_VERSION,
+        requestId: request.requestId,
+        ok: true,
+        result
+      } as never);
+    };
+    const client = new Mdbx2NativeClient(runtime, () => "request-seal");
+
+    await expect(client.sealSessionKey("cmF3LWtleQ==")).resolves.toBe("c2VhbGVkLWJsb2I=");
+    await expect(client.unsealSessionKey("c2VhbGVkLWJsb2I=")).resolves.toBe("cmF3LWtleQ==");
+    expect(runtime.port.messages).toEqual([
+      { protocol: MDBX2_NATIVE_PROTOCOL_VERSION, requestId: "request-seal", method: "session.seal", params: { plaintextBase64: "cmF3LWtleQ==" } },
+      { protocol: MDBX2_NATIVE_PROTOCOL_VERSION, requestId: "request-seal", method: "session.unseal", params: { sealedBase64: "c2VhbGVkLWJsb2I=" } }
+    ]);
+    await expect(client.sealSessionKey("not base64!")).rejects.toMatchObject({ code: "params-invalid" });
+    client.close();
+  });
+
+  it("reports session sealing only when the Host declares it", async () => {
+    const runtime = new FakeRuntime();
+    runtime.port.onPost = (message) => {
+      const request = message as { requestId: string };
+      runtime.port.onMessage.emit({
+        protocol: MDBX2_NATIVE_PROTOCOL_VERSION,
+        requestId: request.requestId,
+        ok: true,
+        result: { ...HELLO, supportsSessionSeal: true }
+      } as never);
+    };
+    const client = new Mdbx2NativeClient(runtime, () => "request-hello");
+    await expect(client.hello()).resolves.toMatchObject({
+      supportsSessionSeal: true,
+      sessionSealProtocolVersion: MDBX2_SESSION_SEAL_PROTOCOL_VERSION
+    });
     client.close();
   });
 

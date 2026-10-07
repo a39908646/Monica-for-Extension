@@ -189,6 +189,22 @@ export class Mdbx2NativeClient {
     return true;
   }
 
+  /** Wraps the vault session key with Windows DPAPI inside the Native Host. */
+  async sealSessionKey(rawKeyBase64: string, timeoutMs = 15_000): Promise<string> {
+    if (!/^[A-Za-z0-9+/]{4,344}={0,2}$/.test(rawKeyBase64)) throw new Mdbx2NativeHostError("params-invalid", "会话密钥格式无效。", false);
+    const value = objectResult(await this.request("session.seal", { plaintextBase64: rawKeyBase64 }, timeoutMs), "Native Host 会话密钥保护响应无效。");
+    if (typeof value.sealedBase64 !== "string" || !/^[A-Za-z0-9+/]{4,8192}={0,2}$/.test(value.sealedBase64)) throw incompatibleResult("Native Host 会话密钥保护响应无效。");
+    return value.sealedBase64;
+  }
+
+  /** Unwraps a session key that was sealed by this user's Windows profile. */
+  async unsealSessionKey(sealedBase64: string, timeoutMs = 15_000): Promise<string> {
+    if (!/^[A-Za-z0-9+/]{4,8192}={0,2}$/.test(sealedBase64)) throw new Mdbx2NativeHostError("params-invalid", "加密会话密钥格式无效。", false);
+    const value = objectResult(await this.request("session.unseal", { sealedBase64 }, timeoutMs), "Native Host 会话密钥解密响应无效。");
+    if (typeof value.plaintextBase64 !== "string" || !/^[A-Za-z0-9+/]{4,344}={0,2}$/.test(value.plaintextBase64)) throw incompatibleResult("Native Host 会话密钥解密响应无效。");
+    return value.plaintextBase64;
+  }
+
   async beginInboundTransfer(
     sizeBytes: number,
     sha256?: string,

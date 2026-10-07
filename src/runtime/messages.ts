@@ -287,6 +287,7 @@ export type ExtensionRequest =
   | { type: "AUTOFILL_SITE_POLICY_SET"; policy: AutofillSitePolicy }
   | { type: "VAULT_TIMEOUT_GET" }
   | { type: "VAULT_TIMEOUT_SET"; settings: VaultTimeoutSettings }
+  | { type: "VAULT_TIMEOUT_CAPABILITIES" }
   | { type: "AUTOFILL_FIELD_POLICY_LIST" }
   | { type: "AUTOFILL_FIELD_POLICY_STATUS"; signature: string }
   | { type: "AUTOFILL_FIELD_POLICY_SET_CURRENT"; blocked: boolean; tabId: number; frameId?: number; documentId?: string; expectedOrigin?: string }

@@ -96,6 +96,7 @@ export const MDBX2_BLOB_REFERENCE_PAGE_SIZE = 256;
 export const MDBX2_MAX_REMOTE_BLOB_BYTES = 64 * 1024 * 1024 + 128 * 1024;
 export const MDBX2_WINDOWS_HELLO_PROTOCOL_VERSION = 1;
 export const MDBX2_WINDOWS_HELLO_RP_ID = "monica-extension.local";
+export const MDBX2_SESSION_SEAL_PROTOCOL_VERSION = 1;
 
 export type Mdbx2NativeMethod =
   | "host.hello"
@@ -149,6 +150,8 @@ export type Mdbx2NativeMethod =
   | "hello.enroll"
   | "hello.verify"
   | "hello.revoke"
+  | "session.seal"
+  | "session.unseal"
   | "transfer.read"
   | "transfer.release"
   | "sync.state.register"
@@ -933,6 +936,9 @@ export interface Mdbx2HostCapabilities {
   supportsWindowsHello: boolean;
   windowsHelloProtocolVersion: typeof MDBX2_WINDOWS_HELLO_PROTOCOL_VERSION;
   windowsHelloRpId: typeof MDBX2_WINDOWS_HELLO_RP_ID;
+  /** Optional so a Host without session sealing stays compatible. */
+  supportsSessionSeal?: boolean;
+  sessionSealProtocolVersion?: typeof MDBX2_SESSION_SEAL_PROTOCOL_VERSION;
 }
 
 export type Mdbx2WindowsHelloReason = "windows-only" | "platform-authenticator-unavailable" | "native-host-unavailable" | "not-enrolled" | "binding-record-invalid" | "ready";
@@ -1068,6 +1074,8 @@ export function validateMdbx2HostCapabilities(input: unknown): Mdbx2HostCapabili
   if (typeof value.supportsWindowsHello !== "boolean") throw incompatible("Native Host Windows Hello 能力标记无效。");
   if (value.windowsHelloProtocolVersion !== MDBX2_WINDOWS_HELLO_PROTOCOL_VERSION) throw incompatible("Native Host Windows Hello 协议版本不匹配。");
   if (value.windowsHelloRpId !== MDBX2_WINDOWS_HELLO_RP_ID) throw incompatible("Native Host Windows Hello RP ID 不匹配。");
+  if (value.supportsSessionSeal !== undefined && typeof value.supportsSessionSeal !== "boolean") throw incompatible("Native Host 会话密钥保护能力标记无效。");
+  if (value.sessionSealProtocolVersion !== undefined && value.sessionSealProtocolVersion !== MDBX2_SESSION_SEAL_PROTOCOL_VERSION) throw incompatible("Native Host 会话密钥保护协议版本不匹配。");
   const supportedUnlockMethods = stringArray(value.supportedUnlockMethods, 8, 64, "Native Host 解锁方式列表无效。") as Mdbx2UnlockMethod[];
   if (JSON.stringify(supportedUnlockMethods) !== JSON.stringify(["password", "security-key", "password-security-key"])) {
     throw incompatible("Native Host 解锁方式与插件不一致。");
@@ -1137,7 +1145,10 @@ export function validateMdbx2HostCapabilities(input: unknown): Mdbx2HostCapabili
     enabledSyncCapabilityIds: capabilityIds(value.enabledSyncCapabilityIds, "同步"),
     supportsWindowsHello: value.supportsWindowsHello,
     windowsHelloProtocolVersion: MDBX2_WINDOWS_HELLO_PROTOCOL_VERSION,
-    windowsHelloRpId: MDBX2_WINDOWS_HELLO_RP_ID
+    windowsHelloRpId: MDBX2_WINDOWS_HELLO_RP_ID,
+    ...(value.supportsSessionSeal === true
+      ? { supportsSessionSeal: true, sessionSealProtocolVersion: MDBX2_SESSION_SEAL_PROTOCOL_VERSION }
+      : {})
   };
 }
 

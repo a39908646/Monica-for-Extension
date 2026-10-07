@@ -13,6 +13,8 @@ const choice = ref<TimeoutChoice>("15");
 const customValue = ref(15);
 const customUnit = ref<CustomUnit>("minutes");
 const current = ref<VaultTimeoutSettings>({ policy: "minutes", minutes: 15 });
+const persistentAvailable = ref(false);
+const capabilitiesReady = ref(false);
 const ready = ref(false);
 const busy = ref(false);
 const error = ref("");
@@ -52,10 +54,14 @@ function apply(settings: VaultTimeoutSettings): void {
   else { customUnit.value = "minutes"; customValue.value = settings.minutes; }
 }
 
+function isPersistentChoice(value: string): boolean {
+  return value === "browser-restart" || value === "never";
+}
+
 function choiceLabel(value: string): string {
   if (value === "immediate") return tr('立即');
-  if (value === "browser-restart") return tr('浏览器重启时');
-  if (value === "never") return tr('从不');
+  if (value === "browser-restart") return persistentAvailable.value ? tr('浏览器重启时') : `${tr('浏览器重启时')} · ${tr('需要 Native Host')}`;
+  if (value === "never") return persistentAvailable.value ? tr('从不') : `${tr('从不')} · ${tr('需要 Native Host')}`;
   if (value === "custom") return tr('自定义');
   const minutes = Number(value);
   return minutes >= 60 ? tr('{0} 小时', { 0: minutes / 60 }) : tr('{0} 分钟', { 0: minutes });
@@ -91,10 +97,16 @@ async function save(): Promise<void> {
 
 onMounted(async () => {
   try {
-    apply(await vaultClient.getVaultTimeoutSettings());
+    const [settings, capabilities] = await Promise.all([
+      vaultClient.getVaultTimeoutSettings(),
+      vaultClient.getVaultTimeoutCapabilities().catch(() => ({ persistentSessions: false }))
+    ]);
+    apply(settings);
+    persistentAvailable.value = capabilities.persistentSessions;
   } catch (cause) {
     error.value = failureMessage(cause, tr('未能读取会话超时设置。'));
   } finally {
+    capabilitiesReady.value = true;
     ready.value = true;
   }
 });
@@ -113,9 +125,10 @@ onMounted(async () => {
     <label class="vault-timeout-field">
       <span>{{ tr('超时时间') }}</span>
       <select v-model="choice" :disabled="!ready || busy" :aria-label="tr('超时时间')">
-        <option v-for="value in TIMEOUT_CHOICES" :key="value" :value="value">{{ choiceLabel(value) }}</option>
+        <option v-for="value in TIMEOUT_CHOICES" :key="value" :value="value" :disabled="isPersistentChoice(value) && !persistentAvailable">{{ choiceLabel(value) }}</option>
       </select>
     </label>
+    <p v-if="capabilitiesReady && !persistentAvailable" class="vault-timeout-note">{{ tr('此选项需要安装 Monica Native Host 才能加密保存会话密钥。') }}</p>
     <div v-if="choice === 'custom'" class="vault-timeout-custom">
       <label>
         <span>{{ tr('自定义时长') }}</span>
@@ -130,7 +143,7 @@ onMounted(async () => {
         </select>
       </label>
     </div>
-    <p v-if="warning" class="vault-timeout-warning" role="alert">{{ tr('以你的系统账户运行的其他程序（包括恶意软件与备份工具）可以读取该密钥；管理员账户、系统账户或能直接读取磁盘的人同样可以。') }}</p>
+    <p v-if="warning" class="vault-timeout-warning" role="alert">{{ tr('会话密钥由 Windows DPAPI 加密后保存在浏览器本地存储中，不会明文落盘；但 DPAPI 信任你的 Windows 登录会话，以你的账户运行的任何程序仍可解密该密钥，管理员账户或能直接读取磁盘的人同样可以。') }}</p>
     <p v-else class="vault-timeout-note">{{ tr('其他选项只把会话密钥保存在浏览器会话存储中，关闭浏览器后自动清除。') }}</p>
     <div class="vault-timeout-actions">
       <m3e-button variant="tonal" type="button" :disabled="!ready || busy || !dirty" @click="save">{{ busy ? tr('正在保存…') : tr('保存设置') }}</m3e-button>
