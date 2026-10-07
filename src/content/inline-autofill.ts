@@ -4,7 +4,7 @@ import { getUiLocale, initializeUiLocale, tr } from "../i18n/runtime";
 import { createPromptI18n } from "./prompt-i18n";
 import { fillCredential, type FillCredentialInput } from "./dom";
 import { createCurrentFieldContext } from "./field-signature";
-import { loginFieldRole, loginFieldScope } from "./login-field-role";
+import { loginFieldRole, loginFieldScope, loginPageIntent } from "./login-field-role";
 import { inlineMenuPosition } from "./inline-position";
 import { INLINE_AUTOFILL_STYLES } from "./inline-styles";
 
@@ -252,6 +252,7 @@ export function installInlineAutofill(handlers: Handlers, rootDocument: Document
     if (disposed || !enabled || !visible(input) || activeInput() !== input) return;
     const role = loginFieldRole(input, rootDocument);
     if (role !== "username" && role !== "current-password" && role !== "totp") return;
+    if (signupScope(input)) return;
     if (session?.input === input) return;
     dismiss();
     const current: FieldSession = { id: randomSessionId(), input, scope: loginFieldScope(input, rootDocument), role, url: view.location.href, busy: false, consumed: false };
@@ -264,6 +265,11 @@ export function installInlineAutofill(handlers: Handlers, rootDocument: Document
       if (!result.enabled || result.sessionId !== current.id) return dismiss();
       render(current, result);
     } catch { if (session === current) dismiss(); }
+  }
+
+  /** 注册表单不提供已有登录项：把旧密码填进注册页只会让用户困惑。 */
+  function signupScope(input: HTMLInputElement): boolean {
+    return loginPageIntent(loginFieldScope(input, rootDocument), view.location) === "signup";
   }
 
   function eventInput(event: Event) {
@@ -299,6 +305,7 @@ export function installInlineAutofill(handlers: Handlers, rootDocument: Document
     if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
     const target = eventInput(event);
     if (!fromMenu && (!target || !["username", "current-password", "totp"].includes(loginFieldRole(target, rootDocument)))) return;
+    if (!fromMenu && target && signupScope(target)) return;
     event.preventDefault();
     if (!session && target) { void show(target).then(() => { if (session?.input === target) shadow?.querySelector<HTMLButtonElement>(".suggestion,.open-manager")?.focus(); }); return; }
     if (session && !shadow) { session.focusRequested = true; return; }

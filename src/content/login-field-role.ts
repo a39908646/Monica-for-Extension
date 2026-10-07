@@ -7,6 +7,14 @@ const AMBIGUOUS_CODE_HINT = /^(code|token|pin|securitycode|securitytoken|验证�
 const NEW_PASSWORD_HINT = /(newpassword|confirmpassword|passwordconfirmation|createpassword|setpassword|新密码|确认密码|重复密码)/;
 const NEW_PASSWORD_SCOPE = /(signup|sign-up|register|registration|createaccount|resetpassword|forgotpassword|changepassword|注册|创建账户|重置密码|修改密码|设置密码)/;
 
+/** 表单意图：决定保存提示的默认动作，以及是否抑制内联菜单。 */
+export type LoginPageIntent = "login" | "signup" | "password-change" | "password-reset";
+
+// 注册与重置/改密必须分开：前者要另存为新项，后两者要更新已有密码。
+const SIGNUP_INTENT = /(signup|sign-up|register|registration|createaccount|registerform|signupform|joinnow|新用户|注册|创建账户|创建帐号|创建账号|注册帐号|注册账号)/;
+const PASSWORD_RESET_INTENT = /(resetpassword|passwordreset|resetpwd|forgotpassword|forgotpwd|forgot|重置密码|重设密码|找回密码|忘记密码)/;
+const PASSWORD_CHANGE_INTENT = /(changepassword|change-password|updatepassword|update-password|passwordchange|修改密码|更改密码|变更密码)/;
+
 export function loginFieldRole(input: HTMLInputElement, fallbackRoot: ParentNode = input.ownerDocument): LoginFieldRole {
   const autocomplete = autocompleteTokens(input);
   const hints = inputHints(input);
@@ -58,13 +66,46 @@ function likelyNewPasswordScope(root: ParentNode): boolean {
     .filter((input) => !looksLikeOtpInput(input, autocompleteTokens(input), inputHints(input)));
   const hasCurrent = passwords.some((input) => autocompleteTokens(input).includes("current-password"));
   if (passwords.length >= 2 && !hasCurrent) return true;
-  const ownerDocument = "defaultView" in root ? root as Document : root.ownerDocument;
+  return NEW_PASSWORD_SCOPE.test(`${scopeIdentitySemantics(root)} ${scopeTextSemantics(root)}`);
+}
+
+/**
+ * 表单意图：只有一个新密码字段的表单可能是注册、重置或修改密码，三者默认动作不同。
+ * 优先用表单属性与路径判断；属性不明确时再看文案，仍不明确则按注册处理。
+ * 这样处理的原因是：把真实注册页当成“修改密码”会默认覆盖已有密码（静默丢失），
+ * 而把重置或改密页当成注册页只会多出一条重复条目，用户可以手动合并或删除。
+ */
+export function loginPageIntent(scope: ParentNode, pageLocation?: Location): LoginPageIntent {
+  const roles = Array.from(scope.querySelectorAll<HTMLInputElement>('input[type="password"]'))
+    .map((input) => loginFieldRole(input, scope));
+  if (!roles.includes("new-password")) return "login";
+  const identity = scopeIdentitySemantics(scope, pageLocation);
+  if (roles.includes("current-password") || PASSWORD_CHANGE_INTENT.test(identity)) return "password-change";
+  const signup = SIGNUP_INTENT.test(identity);
+  const reset = PASSWORD_RESET_INTENT.test(identity);
+  if (reset && !signup) return "password-reset";
+  if (signup) return "signup";
+  const text = scopeTextSemantics(scope);
+  if (PASSWORD_RESET_INTENT.test(text) && !SIGNUP_INTENT.test(text)) return "password-reset";
+  return "signup";
+}
+
+/** 表单身份语义：路径与表单自身的标识属性，不含页面文案。 */
+function scopeIdentitySemantics(scope: ParentNode, pageLocation?: Location): string {
+  const ownerDocument = "defaultView" in scope ? scope as Document : scope.ownerDocument;
   const view = ownerDocument?.defaultView;
-  const element = view && root instanceof view.Element ? root : undefined;
-  const documentPath = ownerDocument?.location?.pathname || "";
-  const semantics = [documentPath, element?.id, element?.getAttribute("name"), element?.getAttribute("action"), element?.getAttribute("aria-label"), element?.textContent?.slice(0, 500)]
+  const element = view && scope instanceof view.Element ? scope : undefined;
+  const documentPath = pageLocation?.pathname || ownerDocument?.location?.pathname || "";
+  return [documentPath, element?.id, element?.getAttribute("name"), element?.getAttribute("action"), element?.getAttribute("aria-label")]
     .filter(Boolean).join(" ").toLocaleLowerCase().replace(/[^\p{L}\p{N}-]/gu, "");
-  return NEW_PASSWORD_SCOPE.test(semantics);
+}
+
+/** 表单文案语义：页面/表单开头可见文本，只作为属性不明确时的补充信号。 */
+function scopeTextSemantics(scope: ParentNode): string {
+  const ownerDocument = "defaultView" in scope ? scope as Document : scope.ownerDocument;
+  const view = ownerDocument?.defaultView;
+  const element = view && scope instanceof view.Element ? scope : undefined;
+  return (element?.textContent || "").slice(0, 500).toLocaleLowerCase().replace(/[^\p{L}\p{N}-]/gu, "");
 }
 
 function isOnlyTextCandidateBeforePassword(input: HTMLInputElement, fallbackRoot: ParentNode): boolean {

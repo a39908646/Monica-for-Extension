@@ -2349,10 +2349,12 @@ async function captureCredentialCandidate(input: CredentialCaptureInput, sender:
   const normalizedUsername = candidate.username.trim().toLocaleLowerCase();
   // 提交的密码与库内匹配条目完全一致时，没有需要更新的内容：静默跳过，不弹保存提示。
   if (isUnchangedCredentialCapture(matches, candidate)) return null;
+  // 注册表单也带新密码字段，但同站条目只算“可选更新目标”，绝不默认选中：
+  // 否则在注册页点默认按钮会把新账号的密码覆盖到旧条目上。
   const existingCandidates = normalizedUsername
     ? matches.filter((item) => item.username.trim().toLocaleLowerCase() === normalizedUsername)
-    : candidate.captureKind === "password-change" ? matches : [];
-  const existing = existingCandidates.length === 1 ? existingCandidates[0] : undefined;
+    : candidate.captureKind === "login" ? [] : matches;
+  const existing = candidate.captureKind !== "signup" && existingCandidates.length === 1 ? existingCandidates[0] : undefined;
   const duplicate = [...pendingCredentialCaptures.values()].find((pending) =>
     pending.tabId === source.tabId
     && pending.sourceOrigin === source.origin
@@ -2469,7 +2471,10 @@ function savePromptContext(pending: PendingCredentialCapture, providers: Provide
   });
   return {
     candidateId: pending.id,
-    action: pending.existingItemId ? "update" : updateTargets.length > 1 ? "choose" : "save",
+    action: pending.existingItemId
+      ? "update"
+      : pending.captureKind === "signup" && updateTargets.length ? "save-new"
+      : updateTargets.length > 1 ? "choose" : "save",
     title: pending.pageTitle,
     username: pending.username,
     host: new URL(pending.pageUrl).hostname,
@@ -2497,7 +2502,7 @@ function validateCredentialCapture(input: CredentialCaptureInput, senderUrl: str
     password,
     pageUrl: page.toString(),
     pageTitle: String(input.pageTitle || "").trim().slice(0, 200),
-    captureKind: input.captureKind === "password-change" ? "password-change" : "login",
+    captureKind: input.captureKind === "password-change" || input.captureKind === "signup" ? input.captureKind : "login",
     fieldSignatures
   };
 }

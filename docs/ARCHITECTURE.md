@@ -56,6 +56,18 @@ The home renderer mounts one front card, at most six favorite rows, six folders,
 
 The background obtains a restricted autofill context while locked. Matching and fill commands retain HTTPS, active tab, frame/document, origin, URL and field-policy validation. The context version and lock state are rechecked at dispatch after asynchronous page inspection. General item reads, secret copy, OTP and Passkey commands still require unlocking. Grant editing is manager-only; item imports and external provider records cannot grant access, and full backup restoration clears grants.
 
+## Submit capture intent
+
+The isolated content script classifies the form that is being submitted, because the default action of the save prompt depends on what the user did:
+
+- `login`: the form only has current-password fields. A matching stored login for the same username is updated by default.
+- `signup`: the form looks like registration (signup/register wording in the path or form attributes, or new-password fields with no current-password field). The prompt always defaults to saving a new item, and site matches stay available as optional update targets. A registration password must never silently overwrite a stored one.
+- `password-change` and `password-reset`: a current-password field, or change/reset wording, keeps defaulting to updating the stored login, because that is what the user just did.
+
+When the form wording is ambiguous, the intent falls back to `signup`: creating a duplicate entry is recoverable, while overwriting a stored password is not. The inline autofill menu does not open on signup forms, so a stored password is never filled into a registration form.
+
+Capture runs for a credential submission control click, and for a submit event that either was not prevented or was submitted by that control. Action buttons such as captcha refresh, registration links and forgot-password links never capture, and masked passwords left by a captcha refresh or a form reset are ignored.
+
 ## Interface and localization
 
 `src/nothing.css` maps the existing accessible controls to flat monochrome surfaces. Bundled Doto, Space Grotesk and Space Mono fonts are served locally. System appearance is the default; light and dark modes can be selected explicitly.

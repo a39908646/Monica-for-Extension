@@ -346,3 +346,22 @@ test("a missing deep-linked login shows a fallback window that hands over to the
   await closed;
   await expect(app.manager).toHaveURL(`chrome-extension://${app.extensionId}/index.html`);
 });
+
+test("registration pages do not offer existing logins in the inline menu", async ({ app }) => {
+  await app.context.route("https://inline.example.test/register", route => route.fulfill({
+    contentType: "text/html",
+    body: `<!doctype html><html><head><meta charset="utf-8"></head><body><form id="register" action="/register">
+      <label>Email<input id="username" autocomplete="username" style="height:44px"></label>
+      <label>Password<input id="password" type="password" autocomplete="new-password" style="height:44px"></label>
+      <label>Confirm<input id="confirm" type="password" autocomplete="new-password" style="height:44px"></label>
+      <button type="submit">注册</button></form></body></html>`
+  }));
+  const page = await target(app);
+  await page.goto("https://inline.example.test/register");
+  await page.locator("#username").click();
+  await page.waitForTimeout(250);
+  await expect(page.locator(hostSelector)).toHaveCount(0);
+  await page.keyboard.press("ArrowDown");
+  await page.waitForTimeout(250);
+  await expect(page.locator(hostSelector)).toHaveCount(0);
+});

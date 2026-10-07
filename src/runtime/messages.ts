@@ -134,7 +134,8 @@ export interface SavePromptUpdateTarget {
 
 export interface SavePromptContext {
   candidateId: string;
-  action: "save" | "update" | "choose";
+  /** save-new：注册表单的默认动作，另存为新项并保留可选的更新目标。 */
+  action: "save" | "save-new" | "update" | "choose";
   title: string;
   username: string;
   host: string;
@@ -151,7 +152,8 @@ export interface CredentialCaptureInput {
   password: string;
   pageUrl: string;
   pageTitle: string;
-  captureKind: "login" | "password-change";
+  /** signup 表示注册表单：默认另存为新项，不把同站条目当作默认更新目标。 */
+  captureKind: "login" | "signup" | "password-change";
   fieldSignatures?: string[];
 }
 

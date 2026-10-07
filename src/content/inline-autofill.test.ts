@@ -123,6 +123,13 @@ describe("inline menu lifecycle and request boundaries", () => {
     const row = shadow!.querySelector(".suggestion") as HTMLButtonElement;
     expect(row.querySelector(".hint")?.textContent).toBe("含验证码");
   });
+  it("does not offer existing logins on a registration form", async () => {
+    dom.window.document.body.innerHTML = '<form id="register" action="/register"><input id="user" autocomplete="username"><input id="password" type="password" autocomplete="new-password"><input id="confirm" type="password" autocomplete="new-password"></form>';
+    input("user").focus();
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(host()).toBeNull();
+    expect(query).not.toHaveBeenCalled();
+  });
   it("offers a per-item edit entry when unlocked and requests that item", async () => {
     input().focus();
     await vi.waitFor(() => expect(host()).toBeTruthy());

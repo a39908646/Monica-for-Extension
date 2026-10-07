@@ -237,3 +237,94 @@ function attribute(node: Record<string, any>, name: string): string | undefined 
   const index = attributes.indexOf(name);
   return index >= 0 ? attributes[index + 1] : undefined;
 }
+
+async function routeSignupPage(context: BrowserContext): Promise<void> {
+  await context.route("https://save.example.test/register", (route) => route.fulfill({
+    contentType: "text/html; charset=utf-8",
+    body: `<!doctype html><title>Save Example Signup</title>
+      <form id="register" action="/register">
+        <label>Password <input id="password" type="password" autocomplete="new-password"></label>
+        <label>Confirm <input id="confirm" type="password" autocomplete="new-password"></label>
+        <button type="submit">创建账户</button>
+      </form>
+      <script>document.querySelector("form").addEventListener("submit", event => event.preventDefault())</script>`
+  }));
+}
+
+function signupSeedItem(now: string) {
+  return {
+    id: "signup-existing-login",
+    kind: "login",
+    title: "Existing Save Account",
+    favorite: false,
+    notes: "",
+    createdAt: now,
+    updatedAt: now,
+    providerRefs: [],
+    username: "joy@example.com",
+    password: "old-secret",
+    uris: ["https://save.example.test"],
+    customFields: []
+  };
+}
+
+async function submitSignup(page: Page, password: string): Promise<void> {
+  await page.locator("#password").fill(password);
+  await page.locator("#confirm").fill(password);
+  await page.locator("#register button").click();
+}
+
+test("registration pages default to saving a new login instead of overwriting the stored one", async ({}, testInfo) => {
+  let context: BrowserContext | undefined;
+  try {
+    const launched = await launchExtension(testInfo, "signup-default-profile");
+    context = launched.context;
+    const existing = signupSeedItem(new Date().toISOString());
+    expect(await launched.manager.evaluate(async (item) => chrome.runtime.sendMessage({ type: "VAULT_UPSERT_ITEM", item }), existing)).toMatchObject({ ok: true });
+    await routeSignupPage(context);
+    const page = await context.newPage();
+    await page.goto("https://save.example.test/register");
+    await submitSignup(page, "brand-new-secret");
+    await confirmSavePrompt(page);
+
+    const items = await listItems(launched.manager);
+    expect(items).toHaveLength(2);
+    expect(items.find((item) => item.id === existing.id)?.password).toBe("old-secret");
+    expect(items.filter((item) => item.password === "brand-new-secret")).toHaveLength(1);
+  } finally {
+    await context?.close();
+  }
+});
+
+test("registration pages still allow updating a stored login when the user picks it", async ({}, testInfo) => {
+  let context: BrowserContext | undefined;
+  try {
+    const launched = await launchExtension(testInfo, "signup-update-profile");
+    context = launched.context;
+    const existing = signupSeedItem(new Date().toISOString());
+    expect(await launched.manager.evaluate(async (item) => chrome.runtime.sendMessage({ type: "VAULT_UPSERT_ITEM", item }), existing)).toMatchObject({ ok: true });
+    await routeSignupPage(context);
+    const page = await context.newPage();
+    await page.goto("https://save.example.test/register");
+    await submitSignup(page, "replacement-secret");
+
+    const prompt = page.locator("#monica-save-prompt-host");
+    await expect(prompt).toHaveCount(1, { timeout: 15_000 });
+    await expect.poll(() => prompt.evaluate((host) => document.activeElement === host)).toBe(true);
+    // 焦点在确认按钮：倒回去打开“处理方式”，选到同站旧条目，再回到确认按钮。
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Enter");
+    await expect(prompt).toHaveCount(0, { timeout: 20_000 });
+
+    const items = await listItems(launched.manager);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ id: existing.id, password: "replacement-secret" });
+  } finally {
+    await context?.close();
+  }
+});

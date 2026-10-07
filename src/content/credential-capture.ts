@@ -1,5 +1,5 @@
 import type { CredentialCaptureInput } from "../runtime/messages";
-import { loginFieldRole } from "./login-field-role";
+import { loginFieldRole, loginPageIntent } from "./login-field-role";
 
 const USERNAME_SELECTORS = [
   'input[autocomplete="username"]',
@@ -25,7 +25,10 @@ export function captureCredentialInput(root: ParentNode, rootDocument: Document 
 
   const newPasswordInputs = passwordInputs.filter((input) => loginFieldRole(input, root) === "new-password");
   const currentPasswordInputs = passwordInputs.filter((input) => loginFieldRole(input, root) === "current-password");
-  const captureKind = newPasswordInputs.length ? "password-change" : "login";
+  // 注册表单同样带新密码字段，但默认动作是另存为新项，不能和修改密码混为一谈。
+  const captureKind: CredentialCaptureInput["captureKind"] = newPasswordInputs.length
+    ? (loginPageIntent(root, pageLocation) === "signup" ? "signup" : "password-change")
+    : "login";
   const password = choosePassword(newPasswordInputs.length ? newPasswordInputs : currentPasswordInputs);
   if (!password) return null;
   if (isMaskedPassword(password)) return null;

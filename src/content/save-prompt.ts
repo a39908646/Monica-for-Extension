@@ -69,8 +69,8 @@ export function renderSavePrompt(context: SavePromptContext, handlers: SavePromp
   let providerField: HTMLLabelElement | undefined;
   let strategySelect: HTMLSelectElement | undefined;
   let selectedExistingItemId = context.existingItemId;
-  let savingNew = context.action === "save";
-  if (context.action === "save" || context.action === "choose") {
+  let savingNew = context.action === "save" || context.action === "save-new";
+  if (context.action === "save" || context.action === "save-new" || context.action === "choose") {
     providerField = element(rootDocument, "label", "field");
     const label = element(rootDocument, "span", "field-label");
     i18n.text(label, () => tr('保存到'));
@@ -85,20 +85,25 @@ export function renderSavePrompt(context: SavePromptContext, handlers: SavePromp
     }
     providerField.append(label, providerSelect);
   }
-  if (context.action === "choose") {
+  if (context.action === "choose" || context.action === "save-new") {
+    // choose：同名多账号，必须显式选一次；save-new：注册表单，默认另存为新项，也可选一个旧条目去更新。
+    const selecting = context.action === "choose";
     const strategyField = element(rootDocument, "label", "field");
     const strategyLabel = element(rootDocument, "span", "field-label");
     i18n.text(strategyLabel, () => tr('处理方式'));
     strategySelect = rootDocument.createElement("select");
     i18n.attribute(strategySelect, "aria-label", () => tr('选择更新目标或另存为新项'));
-    const placeholder = rootDocument.createElement("option");
-    placeholder.value = "";
-    i18n.text(placeholder, () => tr('请选择处理方式'));
-    placeholder.disabled = true;
-    placeholder.selected = true;
-    strategySelect.append(placeholder);
+    if (selecting) {
+      const placeholder = rootDocument.createElement("option");
+      placeholder.value = "";
+      i18n.text(placeholder, () => tr('请选择处理方式'));
+      placeholder.disabled = true;
+      placeholder.selected = true;
+      strategySelect.append(placeholder);
+    }
     const saveNew = rootDocument.createElement("option");
     saveNew.value = "new";
+    saveNew.selected = !selecting;
     i18n.text(saveNew, () => tr('另存为新登录项'));
     strategySelect.append(saveNew);
     for (const target of context.updateTargets) {
@@ -108,8 +113,10 @@ export function renderSavePrompt(context: SavePromptContext, handlers: SavePromp
       strategySelect.append(option);
     }
     strategyField.append(strategyLabel, strategySelect);
-    providerField!.hidden = true;
-    providerSelect!.disabled = true;
+    if (selecting) {
+      providerField!.hidden = true;
+      providerSelect!.disabled = true;
+    }
     card.append(header, account, strategyField, providerField!);
   } else if (providerField) {
     card.append(header, account, providerField);
@@ -123,7 +130,11 @@ export function renderSavePrompt(context: SavePromptContext, handlers: SavePromp
   const dismiss = button(rootDocument, "", "secondary");
   const accept = button(rootDocument, "", "primary");
   i18n.text(dismiss, () => tr('不保存'));
-  i18n.text(accept, () => context.action === "update" ? tr('更新密码') : context.action === "choose" ? tr('请选择') : tr('保存密码'));
+  i18n.text(accept, () => context.action === "update"
+    ? tr('更新密码')
+    : context.action === "choose" ? tr('请选择')
+    : context.action === "save-new" ? tr('保存为新登录项')
+    : tr('保存密码'));
   if (context.action === "choose") accept.disabled = true;
   actions.append(dismiss, accept);
   card.append(status, actions);
@@ -229,7 +240,7 @@ export function renderSavePrompt(context: SavePromptContext, handlers: SavePromp
     observer.observe(rootDocument.documentElement, { childList: true, subtree: true });
     observer.observe(host, { attributes: true });
   }
-  rootDocument.defaultView?.setTimeout(() => (strategySelect || accept).focus(), 0);
+  rootDocument.defaultView?.setTimeout(() => (context.action === "choose" && strategySelect ? strategySelect : accept).focus(), 0);
   return host;
 }
 

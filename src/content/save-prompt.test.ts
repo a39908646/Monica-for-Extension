@@ -70,6 +70,53 @@ describe("save prompt", () => {
     dom.window.close();
   });
 
+  it("defaults a registration form to a new item while listing update targets as optional", async () => {
+    const dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "https://example.com/register", pretendToBeVisual: true });
+    vi.stubGlobal("chrome", { runtime: { getURL: (path: string) => path } });
+    const accept = vi.fn(async () => ({ action: "saved" as const, title: "Example", providerName: "Monica 本地库", syncPending: false }));
+    const host = renderSavePrompt({
+      ...context,
+      action: "save-new",
+      updateTargets: [{ id: "existing-login", title: "Existing", username: "joy@example.com", providerName: "Monica 本地库", isLocalSource: true }]
+    }, { accept, dismiss: vi.fn() }, dom.window.document, { allowUntrustedEvents: true });
+    const shadow = savePromptRootForTest(host)!;
+    const strategy = shadow.querySelector<HTMLSelectElement>('select[aria-label="选择更新目标或另存为新项"]')!;
+    const provider = shadow.querySelector<HTMLSelectElement>('select[aria-label="保存密码源"]')!;
+    const confirm = shadow.querySelector<HTMLButtonElement>(".primary")!;
+    expect(strategy.value).toBe("new");
+    expect(Array.from(strategy.options).map((option) => option.textContent)).toEqual(["另存为新登录项", "更新“Existing” · Monica 本地库"]);
+    expect(confirm.textContent).toBe("保存为新登录项");
+    expect(confirm.disabled).toBe(false);
+    expect(provider.closest("label")?.hidden).toBe(false);
+    confirm.click();
+    await vi.waitFor(() => expect(accept).toHaveBeenCalledWith("local", undefined));
+    vi.unstubAllGlobals();
+    dom.window.close();
+  });
+
+  it("updates a listed target only after the user picks it on a registration form", async () => {
+    const dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "https://example.com/register", pretendToBeVisual: true });
+    vi.stubGlobal("chrome", { runtime: { getURL: (path: string) => path } });
+    const accept = vi.fn(async () => ({ action: "updated" as const, title: "Existing", providerName: "Monica 本地库", syncPending: false }));
+    const host = renderSavePrompt({
+      ...context,
+      action: "save-new",
+      updateTargets: [{ id: "existing-login", title: "Existing", username: "joy@example.com", providerName: "Monica 本地库", isLocalSource: true }]
+    }, { accept, dismiss: vi.fn() }, dom.window.document, { allowUntrustedEvents: true });
+    const shadow = savePromptRootForTest(host)!;
+    const strategy = shadow.querySelector<HTMLSelectElement>('select[aria-label="选择更新目标或另存为新项"]')!;
+    const provider = shadow.querySelector<HTMLSelectElement>('select[aria-label="保存密码源"]')!;
+    const confirm = shadow.querySelector<HTMLButtonElement>(".primary")!;
+    strategy.value = "existing-login";
+    strategy.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    expect(confirm.textContent).toBe("更新所选密码");
+    expect(provider.closest("label")?.hidden).toBe(true);
+    confirm.click();
+    await vi.waitFor(() => expect(accept).toHaveBeenCalledWith(undefined, "existing-login"));
+    vi.unstubAllGlobals();
+    dom.window.close();
+  });
+
   it("dismisses with Escape and restores control to the page", async () => {
     const dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "https://example.com", pretendToBeVisual: true });
     vi.stubGlobal("chrome", { runtime: { getURL: (path: string) => path } });

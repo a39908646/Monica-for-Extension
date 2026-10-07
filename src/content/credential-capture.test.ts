@@ -32,6 +32,17 @@ describe("credential submit capture", () => {
     expect(captureCredentialInput(button.closest("form")!, dom.window.document, dom.window.location)).toBeNull();
   });
 
+  it("tells the ghpym-shaped register form apart from its login form", () => {
+    const login = new JSDOM('<form id="login-form" class="member-form j-member-form" method="post"><input type="text" id="user_login" name="user_login" placeholder="请输入用户名/电子邮箱" value="joy@example.com"><input type="password" id="user_password" name="user_password" placeholder="请输入登录密码" value="login-secret"><a class="member-form-forgot" href="/losspass">忘记密码？</a><button type="submit">登录</button></form>', { url: "https://www.ghxi.com/login", pretendToBeVisual: true });
+    expect(captureCredentialInput(login.window.document.querySelector("form")!, login.window.document, login.window.location)).toMatchObject({
+      username: "joy@example.com", password: "login-secret", captureKind: "login"
+    });
+    const register = new JSDOM('<form id="register-form" class="member-form j-member-form" method="post"><input type="text" id="user_email" name="user_email" placeholder="请输入电子邮箱" value="new@example.com"><input type="password" id="user_pass" name="user_pass" placeholder="请输入登录密码" value="brand-new"><input type="password" id="user_pass2" name="user_pass2" placeholder="请确认登录密码" value="brand-new"><button type="submit">提交注册</button></form>', { url: "https://www.ghxi.com/reg", pretendToBeVisual: true });
+    expect(captureCredentialInput(register.window.document.querySelector("form")!, register.window.document, register.window.location)).toMatchObject({
+      username: "new@example.com", password: "brand-new", captureKind: "signup"
+    });
+  });
+
   it("captures phone-number usernames used by mobile login forms", () => {
     const dom = page('<form><label>手机号码<input type="tel" value="13800000000"></label><input type="password" value="secret"></form>');
     expect(captureCredentialInput(dom.window.document.querySelector("form")!, dom.window.document, dom.window.location)).toMatchObject({ username: "13800000000", password: "secret" });
@@ -47,8 +58,13 @@ describe("credential submit capture", () => {
     expect(captureCredentialInput(dom.window.document.querySelector("form")!, dom.window.document, dom.window.location)).toBeNull();
   });
 
-  it("conservatively treats an unannotated two-password registration form as new-password", () => {
+  it("marks an unannotated two-password registration form as a signup capture", () => {
     const dom = page('<form id="register"><input autocomplete="username" value="joy"><input type="password" value="new-secret"><input type="password" value="new-secret"></form>');
+    expect(captureCredentialInput(dom.window.document.querySelector("form")!, dom.window.document, dom.window.location)).toMatchObject({ password: "new-secret", captureKind: "signup" });
+  });
+
+  it("keeps password resets on the password-change kind so they update the stored login", () => {
+    const dom = new JSDOM('<form action="/reset-password"><input type="password" value="new-secret"><input type="password" value="new-secret"></form>', { url: "https://accounts.example.com/reset-password", pretendToBeVisual: true });
     expect(captureCredentialInput(dom.window.document.querySelector("form")!, dom.window.document, dom.window.location)).toMatchObject({ password: "new-secret", captureKind: "password-change" });
   });
 
