@@ -26,11 +26,11 @@ describe("login URL matching", () => {
   });
 
   it("matches hosts with their port and keeps explicit IP ports scoped", () => {
-    expect(score("http://192.168.1.122:4000", "host", "http://192.168.1.122:4000/login")).toBe(130);
-    expect(score("http://192.168.1.122:4000", "host", "http://192.168.1.122:9208/login")).toBe(0);
-    expect(score("example.com:8443", "host", "https://example.com:8443/login")).toBe(130);
-    expect(score("example.com", "host", "https://example.com:8443/login")).toBe(0);
-    expect(score("https://example.com", "host", "https://example.com/login")).toBe(130);
+    expect(score("http://192.168.1.122:4000", "host-port", "http://192.168.1.122:4000/login")).toBe(130);
+    expect(score("http://192.168.1.122:4000", "host-port", "http://192.168.1.122:9208/login")).toBe(0);
+    expect(score("example.com:8443", "host-port", "https://example.com:8443/login")).toBe(130);
+    expect(score("example.com", "host-port", "https://example.com:8443/login")).toBe(0);
+    expect(score("https://example.com", "host-port", "https://example.com/login")).toBe(130);
     expect(score("http://192.168.1.122:4000", "domain", "http://192.168.1.122:4000/login")).toBe(110);
     expect(score("http://192.168.1.122:4000", "base-domain", "http://192.168.1.122:9208/login")).toBe(0);
     expect(score("http://192.168.1.122:4000", "base-domain", "http://192.168.1.122:4000/login")).toBe(100);

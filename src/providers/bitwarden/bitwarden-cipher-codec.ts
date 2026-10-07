@@ -905,7 +905,7 @@ function bitwardenMatchType(value: unknown): LoginUriMatchType {
 
 function bitwardenMatchCode(value: LoginUriMatchType): number {
   // Bitwarden 的 Host(1) 语义最接近本地 host 规则；导入时 1 仍按“域及子域名”解析，以保持既有同步数据的匹配范围不变。
-  return ({ "base-domain": 0, domain: 1, host: 1, "starts-with": 2, exact: 3, regex: 4, never: 5 } as const)[value];
+  return ({ "base-domain": 0, domain: 1, "host-port": 1, "starts-with": 2, exact: 3, regex: 4, never: 5 } as const)[value];
 }
 
 function stringValue(raw: Record<string, unknown>, ...names: string[]): string {

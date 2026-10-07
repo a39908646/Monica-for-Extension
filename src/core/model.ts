@@ -22,7 +22,7 @@ export interface ProviderReference {
   etag?: string;
 }
 
-export type LoginUriMatchType = "base-domain" | "host" | "domain" | "starts-with" | "exact" | "regex" | "never";
+export type LoginUriMatchType = "base-domain" | "host-port" | "domain" | "starts-with" | "exact" | "regex" | "never";
 
 export interface LoginUriRule {
   uri: string;

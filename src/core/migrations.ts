@@ -3,7 +3,7 @@ import { normalizeSitePolicy } from "../autofill/site-policy";
 import { normalizeBlockedFieldSignatures } from "../autofill/field-policy";
 import { normalizeHomePreferences } from "./home-preferences";
 
-const URI_MATCH_TYPES = new Set<LoginUriMatchType>(["base-domain", "host", "domain", "starts-with", "exact", "regex", "never"]);
+const URI_MATCH_TYPES = new Set<LoginUriMatchType>(["base-domain", "host-port", "domain", "starts-with", "exact", "regex", "never"]);
 const LEGACY_MDBX_MESSAGE = "此密码源使用 Monica Extension 已停用的 MDBX1 实现。请使用 Monica Android 或桌面端升级为 MDBX2 后重新连接。";
 export const MAX_SOURCE_RECORD_TAG_LENGTH = 64;
 

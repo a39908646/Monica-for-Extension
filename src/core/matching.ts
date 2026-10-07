@@ -39,7 +39,7 @@ function effectiveUriRules(item: LoginItem): LoginUriRule[] {
 function uriRuleMatchScore(rule: LoginUriRule, page: URL): number {
   const stored = rule.uri.trim();
   if (!stored || rule.matchType === "never") return 0;
-  if (rule.matchType === "host") {
+  if (rule.matchType === "host-port") {
     const storedAuthority = comparableAuthority(stored);
     return storedAuthority && storedAuthority === page.host.toLocaleLowerCase() ? 130 : 0;
   }
