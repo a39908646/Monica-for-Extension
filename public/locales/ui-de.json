@@ -2918,4 +2918,10 @@
   "内容块与 Monica Android 端共用受保护字段，扩展只编辑其中的字段值。": "Inhaltsblöcke nutzen dieselben geschützten Felder wie die Monica-Android-App. Die Erweiterung bearbeitet nur deren Werte.",
   "内容块超过 256 KiB，无法保存。": "Der Inhaltsblock überschreitet 256 KiB und kann nicht gespeichert werden.",
   "内容块不存在，未删除任何字段。": "Der Inhaltsblock fehlt; es wurden keine Felder gelöscht.",
-  "无法读取的内容块不会被删除。": "Nicht lesbare Inhaltsblöcke werden nie gelöscht."}
+  "无法读取的内容块不会被删除。": "Nicht lesbare Inhaltsblöcke werden nie gelöscht.",
+  "生成密码": "Passwort erzeugen",
+  "已填入密码框。": "Das Passwortfeld wurde ausgefüllt.",
+  "无法填入此密码框。": "Dieses Passwortfeld konnte nicht ausgefüllt werden.",
+  "缩短一个字符": "Um ein Zeichen kürzen",
+  "加长一个字符": "Um ein Zeichen verlängern",
+  "PIN": "PIN"}

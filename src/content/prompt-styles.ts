@@ -71,9 +71,15 @@ export const PROMPT_BASE_STYLES = `
   @media (prefers-reduced-motion: reduce) { .card { animation: none; } }
 `;
 
-export function promptIcon(kind: "key" | "save" | "info" | "close"): string {
+export function promptIcon(kind: "key" | "save" | "info" | "close" | "refresh" | "copy" | "eye" | "eye-off" | "plus" | "minus"): string {
   if (kind === "close") return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>';
   if (kind === "save") return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h11l3 3v11H5z"></path><path d="M8 5v5h7V5M8 19v-6h8v6"></path></svg>';
   if (kind === "info") return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6M12 7h.01"></path></svg>';
+  if (kind === "refresh") return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.5-5.8"></path><path d="M20 4v5h-5"></path></svg>';
+  if (kind === "copy") return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a1 1 0 0 1 1-1h9"></path></svg>';
+  if (kind === "eye") return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+  if (kind === "eye-off") return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4l16 16"></path><path d="M9.9 6A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-3.4 4.2"></path><path d="M6.4 8.3A16.6 16.6 0 0 0 2.5 12S6 18.5 12 18.5c1.1 0 2.1-.2 3-.5"></path><path d="M9.9 12a2.1 2.1 0 0 0 2.9 2.9"></path></svg>';
+  if (kind === "plus") return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12"></path></svg>';
+  if (kind === "minus") return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"></path></svg>';
   return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="4"></circle><path d="M12 12h9m-3 0v3m-3-3v2"></path></svg>';
 }

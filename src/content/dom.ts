@@ -109,7 +109,7 @@ function visibleInput(input: HTMLInputElement): boolean {
   return !input.disabled && !input.readOnly && style?.display !== "none" && style?.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
 }
 
-function setNativeValue(input: HTMLInputElement, value: string): boolean {
+export function setNativeValue(input: HTMLInputElement, value: string): boolean {
   const view = input.ownerDocument.defaultView;
   const prototype = view?.HTMLInputElement.prototype || HTMLInputElement.prototype;
   const descriptor = Object.getOwnPropertyDescriptor(prototype, "value");

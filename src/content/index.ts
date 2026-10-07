@@ -8,6 +8,7 @@ import { fillWallet } from "./wallet-dom";
 import { closePasskeyPrompt, renderPasskeyPrompt } from "./passkey-prompt";
 import { initializeUiLocale, translateRuntimeError } from "../i18n/runtime";
 import { installInlineAutofill } from "./inline-autofill";
+import { installPasswordGenerator } from "./generator-menu";
 import type { InlineAutofillResult } from "../autofill/inline-contract";
 
 const inlineAutofill = installInlineAutofill({
@@ -16,6 +17,9 @@ const inlineAutofill = installInlineAutofill({
   openManager: sessionId => sendRuntime({ type: "AUTOFILL_INLINE_OPEN", sessionId }),
   editItem: (sessionId, itemId) => sendRuntime({ type: "AUTOFILL_INLINE_EDIT", sessionId, itemId })
 });
+
+// 页面内密码生成器：只在新密码字段上出现，不读密码库，锁定时也能用。
+installPasswordGenerator();
 
 chrome.runtime.onMessage.addListener((message: { type?: string; credential?: FillCredentialInput; context?: SavePromptContext; wallet?: WalletFillPayload; expectedOrigin?: string; candidateId?: string; sessionId?: string }, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL("")) || sender.tab !== undefined) return false;

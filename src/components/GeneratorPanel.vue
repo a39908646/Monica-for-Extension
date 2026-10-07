@@ -2,8 +2,9 @@
 import { tr } from '../i18n';
 
 import { computed, onMounted, reactive, ref, watch } from "vue";
-import { DEFAULT_SYMBOLS, generatePassphrase, generatePassword, generatePin, generateWordPassword, passwordStrengthBits } from "../core/credential-generator";
-import { DEFAULT_GENERATOR_PREFERENCES, GeneratorPreferencesStore, normalizeGeneratorPreferences, resolveAllowedSymbols } from "../core/generator-preferences";
+import { DEFAULT_SYMBOLS, passwordStrengthBits } from "../core/credential-generator";
+import { DEFAULT_GENERATOR_PREFERENCES, GeneratorPreferencesStore, normalizeGeneratorPreferences } from "../core/generator-preferences";
+import { generateFromPreferences } from "../core/generator-presets";
 import { generateSshKeyPair, type SshKeyPairData } from "../core/ssh-key-generator";
 import type { ProviderAccount } from "../core/model";
 import { vaultClient } from "../runtime/client";
@@ -17,6 +18,8 @@ interface GeneratorHistoryRow extends AndroidGeneratorHistoryEntry {
 }
 
 type Mode = "password" | "word" | "pin" | "passphrase" | "ssh";
+// 字符串类结果统一走 core/generator-presets 的共享映射，页面内面板使用同一份实现。
+const GENERATOR_MODE_BY_PANEL_MODE = { password: "SYMBOL", word: "PASSWORD", pin: "PIN", passphrase: "PASSPHRASE", ssh: "SSH_KEY" } as const;
 const mode = ref<Mode>("password");
 const result = ref("");
 const status = ref("");
@@ -124,10 +127,7 @@ async function generate() {
   if (generating.value) return;
   status.value = "";
   try {
-    if (mode.value === "password") result.value = generatePassword({ length: password.length, uppercaseChars: password.uppercase ? undefined : "", lowercaseChars: password.lowercase ? undefined : "", numberChars: password.numbers ? undefined : "", symbolChars: password.symbols ? resolveAllowedSymbols(toPreferences()) : "", uppercaseMin: password.uppercase ? password.uppercaseMin : 0, lowercaseMin: password.lowercase ? password.lowercaseMin : 0, numbersMin: password.numbers ? password.numbersMin : 0, symbolsMin: password.symbols ? password.symbolsMin : 0, excludeSimilar: password.excludeSimilar, excludeAmbiguous: password.excludeAmbiguous });
-    else if (mode.value === "word") result.value = generateWordPassword({ length: words.length, firstLetterUppercase: words.firstLetterUppercase, includeNumbers: words.includeNumbers, separator: words.separator, separatorCountsTowardsLength: words.separatorCountsTowardsLength, segmentLength: words.segmentLength });
-    else if (mode.value === "pin") result.value = generatePin(pin.length);
-    else if (mode.value === "ssh") {
+    if (mode.value === "ssh") {
       generating.value = true;
       revealedPrivateKey.value = false;
       sshResult.value = await generateSshKeyPair({ algorithm: ssh.algorithm === "RSA" ? "RSA" : "ED25519", rsaKeySize: ssh.rsaSize });
@@ -135,7 +135,7 @@ async function generate() {
       generating.value = false;
       return;
     }
-    else result.value = generatePassphrase(phrase);
+    result.value = generateFromPreferences(toPreferences(), GENERATOR_MODE_BY_PANEL_MODE[mode.value]);
   } catch (error) { status.value = error instanceof Error ? error.message : tr('无法生成。'); }
   generating.value = false;
 }

@@ -68,6 +68,14 @@ When the form wording is ambiguous, the intent falls back to `signup`: creating 
 
 Capture runs for a credential submission control click, and for a submit event that either was not prevented or was submitted by that control. Action buttons such as captcha refresh, registration links and forgot-password links never capture, and masked passwords left by a captcha refresh or a form reset are ignored.
 
+## In-field password generator
+
+New-password fields get a small generator trigger inside the field. The trigger is a host element with a closed shadow root, so the page DOM itself is never modified. The panel generates with the same preferences as the manager generator (`core/generator-presets.ts`), can reveal, copy, regenerate, adjust the length of the active mode, and fill the field together with its empty or identical confirmation field. Filling writes only through the native value setter plus `input`/`change` events, so framework forms update their state.
+
+The trigger appears only when the form qualifies, using the same conservative policy as Android `autofill_ng/builder/StrongPasswordSuggestionPolicy.kt`: at least one new-password field, and either no current-password field or at least two new-password fields. A site that mislabels a login identifier as new-password therefore gets no generator, and a plain login form never shows one.
+
+The generator reads no vault data, sends nothing over the network, keeps no history, and therefore works while the vault is locked. It follows the “表单旁自动填充” switch together with the inline menu.
+
 ## Interface and localization
 
 `src/nothing.css` maps the existing accessible controls to flat monochrome surfaces. Bundled Doto, Space Grotesk and Space Mono fonts are served locally. System appearance is the default; light and dark modes can be selected explicitly.

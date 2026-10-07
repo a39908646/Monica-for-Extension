@@ -2918,4 +2918,10 @@
   "内容块与 Monica Android 端共用受保护字段，扩展只编辑其中的字段值。": "Content blocks share protected fields with the Monica Android app. The extension edits the field values only.",
   "内容块超过 256 KiB，无法保存。": "The content block exceeds 256 KiB and cannot be saved.",
   "内容块不存在，未删除任何字段。": "The content block is missing; no fields were deleted.",
-  "无法读取的内容块不会被删除。": "Unreadable content blocks are never deleted."}
+  "无法读取的内容块不会被删除。": "Unreadable content blocks are never deleted.",
+  "生成密码": "Generate password",
+  "已填入密码框。": "Filled the password field.",
+  "无法填入此密码框。": "Could not fill this password field.",
+  "缩短一个字符": "Shorten by one character",
+  "加长一个字符": "Lengthen by one character",
+  "PIN": "PIN"}

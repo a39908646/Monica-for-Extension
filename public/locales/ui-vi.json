@@ -2918,4 +2918,10 @@
   "内容块与 Monica Android 端共用受保护字段，扩展只编辑其中的字段值。": "Khối nội dung dùng chung các trường được bảo vệ với ứng dụng Monica Android. Tiện ích chỉ chỉnh sửa giá trị của chúng.",
   "内容块超过 256 KiB，无法保存。": "Khối nội dung vượt quá 256 KiB và không thể lưu.",
   "内容块不存在，未删除任何字段。": "Không tìm thấy khối nội dung; không có trường nào bị xóa.",
-  "无法读取的内容块不会被删除。": "Khối nội dung không đọc được sẽ không bao giờ bị xóa."}
+  "无法读取的内容块不会被删除。": "Khối nội dung không đọc được sẽ không bao giờ bị xóa.",
+  "生成密码": "Tạo mật khẩu",
+  "已填入密码框。": "Đã điền vào trường mật khẩu.",
+  "无法填入此密码框。": "Không thể điền vào trường mật khẩu này.",
+  "缩短一个字符": "Giảm một ký tự",
+  "加长一个字符": "Tăng một ký tự",
+  "PIN": "PIN"}
