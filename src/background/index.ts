@@ -1,4 +1,5 @@
 import { isLoginItem, createLoginItem, type BillingAddressItem, type CardItem, type IdentityItem, type LoginItem, type PasskeyItem, type PaymentAccountItem, type ProviderAccount, type ProviderConflict, type ProviderConflictSummary, type TotpItem, type VaultItem } from "../core/model";
+import { isUnchangedCredentialCapture } from "../core/credential-capture-policy";
 import { loginMatchScore, matchingLogins } from "../core/matching";
 import { readInlineAutofillEnabled } from "../autofill/inline-preferences";
 import { assertInlineSessionId, INLINE_SUGGESTION_LIMIT, type InlineAutofillResult } from "../autofill/inline-contract";
@@ -2295,7 +2296,7 @@ async function clearPendingUsernameContexts(): Promise<void> {
   if (keys.length) await chrome.storage.session.remove(keys);
 }
 
-async function captureCredentialCandidate(input: CredentialCaptureInput, sender: chrome.runtime.MessageSender): Promise<SavePromptContext> {
+async function captureCredentialCandidate(input: CredentialCaptureInput, sender: chrome.runtime.MessageSender): Promise<SavePromptContext | null> {
   const source = assertWebPageSender(sender);
   if ((await service.status()) !== "unlocked") throw new VaultLockedError("密码库已锁定；请先解锁 Monica，再重新提交登录表单。");
   if (await savePromptBlocked(source.url)) throw new Error("此网站已禁止显示密码保存提示。");
@@ -2316,6 +2317,8 @@ async function captureCredentialCandidate(input: CredentialCaptureInput, sender:
   const state = await service.readState();
   const matches = matchingLogins(state.items.filter(isLoginItem), candidate.pageUrl);
   const normalizedUsername = candidate.username.trim().toLocaleLowerCase();
+  // 提交的密码与库内匹配条目完全一致时，没有需要更新的内容：静默跳过，不弹保存提示。
+  if (isUnchangedCredentialCapture(matches, candidate)) return null;
   const existingCandidates = normalizedUsername
     ? matches.filter((item) => item.username.trim().toLocaleLowerCase() === normalizedUsername)
     : candidate.captureKind === "password-change" ? matches : [];

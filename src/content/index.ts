@@ -231,8 +231,8 @@ function isBoundedBridgeRequest(request: unknown): request is PasskeyRequest {
 async function submitCandidate(candidate: CredentialCaptureInput, root: ParentNode): Promise<void> {
   try {
     const contexts = await createFieldContextsForRoot(root);
-    const context = await sendRuntime<SavePromptContext>({ type: "CREDENTIAL_CAPTURE", candidate: { ...candidate, fieldSignatures: [...new Set(contexts.map((field) => field.signature))] } });
-    if (window.top === window) showPrompt(context);
+    const context = await sendRuntime<SavePromptContext | null>({ type: "CREDENTIAL_CAPTURE", candidate: { ...candidate, fieldSignatures: [...new Set(contexts.map((field) => field.signature))] } });
+    if (context && window.top === window) showPrompt(context);
   } catch (error) {
     // Locked vaults and unsupported pages fail closed without retaining the password in page state.
     console.warn("[Monica] Credential candidate rejected:", error instanceof Error ? error.message : "unknown error");
