@@ -161,15 +161,18 @@ onMounted(async () => {
 <style scoped>
 .vault-timeout { display: grid; gap: 12px; padding: 16px; }
 .vault-timeout-head { display: flex; gap: 12px; align-items: center; }
+.vault-timeout-head > div { min-width: 0; }
 .vault-timeout-icon { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; border-radius: 8px; background: var(--app-surface-high); }
 .vault-timeout-head strong { font-size: 1rem; font-weight: 600; overflow-wrap: anywhere; }
 .vault-timeout-head p { margin: 4px 0 0; font-size: .875rem; color: var(--app-muted); overflow-wrap: anywhere; }
 .vault-timeout-description, .vault-timeout-note, .vault-timeout-warning { margin: 0; font-size: .8125rem; line-height: 1.6; overflow-wrap: anywhere; }
 .vault-timeout-description, .vault-timeout-note { color: var(--app-muted); }
 .vault-timeout-warning { padding: 10px 12px; border-radius: 8px; color: var(--app-error, #ba151c); background: var(--app-surface-high); }
-.vault-timeout-field, .vault-timeout-custom label { display: grid; gap: 6px; font-size: .8125rem; }
+/* 窄屏与 200% 字号下，原生 select 的最小内容宽度会把卡片顶出窗口：
+   用 minmax(0, 1fr) 允许轨道收缩，并让控件只占可用宽度。 */
+.vault-timeout-field, .vault-timeout-custom label { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; font-size: .8125rem; }
 .vault-timeout-field > span, .vault-timeout-custom label > span { color: var(--app-muted); }
-.vault-timeout select, .vault-timeout input { min-height: 44px; padding: 0 10px; border: 1px solid var(--app-outline); border-radius: 8px; color: inherit; background: var(--app-surface, transparent); font: inherit; }
+.vault-timeout select, .vault-timeout input { width: 100%; min-width: 0; max-width: 100%; min-height: 44px; padding: 0 10px; border: 1px solid var(--app-outline); border-radius: 8px; color: inherit; background: var(--app-surface, transparent); font: inherit; }
 .vault-timeout-custom { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
 .vault-timeout-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .vault-timeout-saved { font-size: .8125rem; color: var(--app-muted); }
