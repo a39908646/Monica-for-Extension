@@ -16,7 +16,9 @@ export class NativeDpapiSessionSealer implements VaultSessionSealer {
     try {
       // A cold Host start initializes the MDBX2 runtime before it answers.
       return (await this.client.hello(20_000)).supportsSessionSeal === true;
-    } catch {
+    } catch (cause) {
+      // The settings panel reports a boolean, so the reason has to be visible here.
+      console.warn("[Monica] 会话密钥保护 Host 探测失败：", cause instanceof Error ? cause.message : cause);
       return false;
     }
   }
