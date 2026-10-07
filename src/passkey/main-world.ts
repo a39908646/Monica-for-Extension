@@ -70,8 +70,18 @@ if (navigator.credentials && !(navigator.credentials as CredentialsContainer & {
   } });
 }
 
+// HTTP 页面不是安全上下文，crypto.randomUUID 不存在；用 getRandomValues 回退。
+function randomRequestId(): string {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map((value) => value.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 function bridge(request: Record<string, unknown>, timeoutMs = 120_000, signal?: AbortSignal): Promise<Record<string, any>> {
-  const requestId = crypto.randomUUID();
+  const requestId = randomRequestId();
   return new Promise((resolve, reject) => {
     let settled = false;
     let cancellationRequested = false;

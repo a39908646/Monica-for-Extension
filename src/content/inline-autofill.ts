@@ -11,6 +11,16 @@ import { createMonicaLogo } from "./brand-logo";
 
 export const INLINE_AUTOFILL_HOST_ID = "monica-inline-autofill-host";
 
+// HTTP 页面不是安全上下文，crypto.randomUUID 不存在；用 getRandomValues（所有上下文可用）回退。
+function randomSessionId(): string {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map((value) => value.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 interface Handlers {
   query(sessionId: string): Promise<InlineAutofillResult>;
   fill(sessionId: string, itemId: string): Promise<unknown>;
@@ -243,7 +253,7 @@ export function installInlineAutofill(handlers: Handlers, rootDocument: Document
     if (role !== "username" && role !== "current-password" && role !== "totp") return;
     if (session?.input === input) return;
     dismiss();
-    const current: FieldSession = { id: crypto.randomUUID(), input, scope: loginFieldScope(input, rootDocument), role, url: view.location.href, busy: false, consumed: false };
+    const current: FieldSession = { id: randomSessionId(), input, scope: loginFieldScope(input, rootDocument), role, url: view.location.href, busy: false, consumed: false };
     session = current;
     try {
       await initializeUiLocale();
