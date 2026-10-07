@@ -51,4 +51,14 @@ describe("credential submit capture", () => {
     const dom = page('<form id="register"><input autocomplete="username" value="joy"><input type="password" value="new-secret"><input type="password" value="new-secret"></form>');
     expect(captureCredentialInput(dom.window.document.querySelector("form")!, dom.window.document, dom.window.location)).toMatchObject({ password: "new-secret", captureKind: "password-change" });
   });
+
+  it("ignores passwords filled with mask bullets left by captcha refresh or form reset", () => {
+    const dom = page('<form><input autocomplete="username" value="joy"><input type="password" value="\u25cf\u25cf\u25cf\u25cf\u25cf\u25cf\u25cf\u25cf"></form>');
+    expect(captureCredentialInput(dom.window.document.querySelector("form")!, dom.window.document, dom.window.location)).toBeNull();
+  });
+
+  it("keeps short asterisk-free passwords and short real passwords", () => {
+    const dom = page('<form><input autocomplete="username" value="joy"><input type="password" value="a*b"></form>');
+    expect(captureCredentialInput(dom.window.document.querySelector("form")!, dom.window.document, dom.window.location)).toMatchObject({ password: "a*b" });
+  });
 });

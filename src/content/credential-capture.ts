@@ -28,6 +28,7 @@ export function captureCredentialInput(root: ParentNode, rootDocument: Document 
   const captureKind = newPasswordInputs.length ? "password-change" : "login";
   const password = choosePassword(newPasswordInputs.length ? newPasswordInputs : currentPasswordInputs);
   if (!password) return null;
+  if (isMaskedPassword(password)) return null;
   const username = findUsername(root, passwordInputs)?.value || fallbackUsername;
   return {
     username: username.trim(),
@@ -54,6 +55,14 @@ function choosePassword(inputs: HTMLInputElement[]): string {
   for (const input of inputs) counts.set(input.value, (counts.get(input.value) || 0) + 1);
   const confirmed = [...counts.entries()].find(([, count]) => count >= 2)?.[0];
   return confirmed || inputs[inputs.length - 1].value;
+}
+
+// 验证码刷新、表单重置等页面行为可能把密码框填成掩码圆点或星号；
+// 这些值不是用户输入的真实密码，捕获它们只会产生无意义的更新提示。
+const MASKED_PASSWORD_PATTERN = /^[\u2022\u25cf\u00b7\uff0a*\u2043\u2219\u2500-\u25ff\u2013\u2014-]+$/;
+
+export function isMaskedPassword(password: string): boolean {
+  return password.length >= 4 && MASKED_PASSWORD_PATTERN.test(password);
 }
 
 function findUsername(root: ParentNode, passwordInputs: HTMLInputElement[]): HTMLInputElement | undefined {

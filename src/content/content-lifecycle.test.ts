@@ -8,7 +8,8 @@ function page(html = '<main id="app"></main>') {
 }
 
 function click(dom: JSDOM, element: Element): void {
-  element.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true, composed: true }));
+  // 真实点击是可取消的；页面 JS 的 preventDefault 依赖这一点。
+  element.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true, composed: true, cancelable: true }));
 }
 
 function submit(dom: JSDOM, form: HTMLFormElement): void {
@@ -30,14 +31,17 @@ describe("dynamic credential capture lifecycle", () => {
     dom.window.document.body.append(host);
     await settle(dom);
     submit(dom, shadow.querySelector("form")!);
+    await settle(dom);
     expect(candidates).toHaveLength(1);
     host.remove();
     await settle(dom);
     submit(dom, shadow.querySelector("form")!);
+    await settle(dom);
     expect(candidates).toHaveLength(1);
     dom.window.document.body.append(host);
     await settle(dom);
     submit(dom, shadow.querySelector("form")!);
+    await settle(dom);
     expect(candidates).toHaveLength(2);
     stop();
     dom.window.close();
@@ -50,6 +54,7 @@ describe("dynamic credential capture lifecycle", () => {
     dom.window.document.querySelector("#app")!.innerHTML = '<form><input autocomplete="username" value="late-user"><input type="password" value="late-secret"><button type="submit">Login</button></form>';
 
     submit(dom, dom.window.document.querySelector("form")!);
+    await settle(dom);
     expect(candidates).toEqual([expect.objectContaining({ username: "late-user", password: "late-secret" })]);
     stop();
   });
@@ -65,6 +70,7 @@ describe("dynamic credential capture lifecycle", () => {
     await settle(dom);
 
     submit(dom, shadow.querySelector("form")!);
+    await settle(dom);
     expect(candidates).toEqual([expect.objectContaining({ username: "shadow-user", password: "shadow-secret" })]);
     stop();
   });
@@ -79,6 +85,7 @@ describe("dynamic credential capture lifecycle", () => {
     host.dispatchEvent(new dom.window.CustomEvent(OPEN_SHADOW_ROOT_EVENT, { bubbles: true, composed: true }));
 
     submit(dom, shadow.querySelector("form")!);
+    await settle(dom);
     expect(candidates).toEqual([expect.objectContaining({ username: "announced-user", password: "announced-secret" })]);
     stop();
   });
@@ -194,6 +201,35 @@ describe("dynamic credential capture lifecycle", () => {
     await settle(dom);
 
     expect(candidates).toEqual([]);
+    stop();
+  });
+
+  it("ignores action buttons like captcha refresh instead of treating them as submission", async () => {
+    const dom = page('<form><input autocomplete="username" value="captcha-user"><input type="password" value="captcha-secret"><button>重获图片</button><button type="button">刷新验证码</button><button type="button">获取短信验证码</button></form>');
+    const candidates: CredentialCaptureInput[] = [];
+    const stop = installCredentialCapture({ rootDocument: dom.window.document, pageLocation: dom.window.location, onCandidate: (candidate) => { candidates.push(candidate); } });
+    const form = dom.window.document.querySelector("form")!;
+    // 真实页面的验证码刷新会拦截 submit 自己处理；模拟这个行为。
+    form.addEventListener("submit", (event) => event.preventDefault());
+    const [regain, refresh, sms] = form.querySelectorAll("button");
+    click(dom, regain!);
+    click(dom, refresh!);
+    click(dom, sms!);
+    await settle(dom);
+
+    expect(candidates).toEqual([]);
+    stop();
+  });
+
+  it("still captures when a bare button labels the login action", async () => {
+    const dom = page('<form><input autocomplete="username" value="bare-user"><input type="password" value="bare-secret"><button>登录</button></form>');
+    const candidates: CredentialCaptureInput[] = [];
+    const stop = installCredentialCapture({ rootDocument: dom.window.document, pageLocation: dom.window.location, onCandidate: (candidate) => { candidates.push(candidate); } });
+    click(dom, dom.window.document.querySelector("form button")!);
+    await settle(dom);
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({ username: "bare-user", password: "bare-secret" });
     stop();
   });
 });

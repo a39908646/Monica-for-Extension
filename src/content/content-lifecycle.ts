@@ -81,10 +81,16 @@ export function installCredentialCapture(options: CaptureOptions): () => void {
       handledEvents.add(event);
       return;
     }
+    // 捕获阶段 defaultPrevented 还未确定（页面 JS 在冒泡阶段 preventDefault 拦截 AJAX 动作）；
+    // 延迟到事件分派完成后检查，被拦截的 submit（验证码刷新等）不做凭据捕获。
     handledEvents.add(event);
     const root = captureRootForEvent(deepestEventElement(event, view), rootDocument);
     clearClickFallback(root);
-    capture(root);
+    const timer = view.setTimeout(() => {
+      activeTimers.delete(timer);
+      if (!stopped && !event.defaultPrevented) capture(root);
+    }, 0);
+    activeTimers.add(timer);
   };
 
   const onClick = (event: Event): void => {
@@ -184,9 +190,25 @@ function submissionControl(event: Event, view: Window & typeof globalThis): Elem
 function isCredentialSubmissionControl(target: Element): boolean {
   const type = target.getAttribute("type")?.toLowerCase();
   if (target.tagName === "INPUT") return type === "submit";
-  if (!type || type === "submit") return true;
-  const label = `${target.textContent || ""} ${target.getAttribute("aria-label") || ""}`.toLowerCase();
-  return /sign.?in|log.?in|登录|登入|继续|continue|submit|save|保存|更新/.test(label);
+  if (type === "button" || type === "reset") {
+    // 显式声明为普通按钮时，仅当 label 明确表达登录意图才视为提交（SPA 双步登录流程）。
+    const label = controlLabel(target);
+    return !ACTION_EXCLUSION_PATTERN.test(label) && SUBMISSION_LABEL_PATTERN.test(label);
+  }
+  if (type === "submit") return true;
+  // 裸 <button> 在 HTML 里默认 type=submit，但大量页面用它做验证码刷新、图片重获等 AJAX 动作。
+  // 只有 label 明确表达登录意图、且不含动作排除词时才视为提交控件。
+  const label = controlLabel(target);
+  return !ACTION_EXCLUSION_PATTERN.test(label) && SUBMISSION_LABEL_PATTERN.test(label);
+}
+
+const SUBMISSION_LABEL_PATTERN = /sign.?in|log.?in|登录|登入|继续|continue|submit|save|保存|更新|next|下一步|advance|approve/i;
+
+// 验证码刷新、注册、找回密码等动作按钮绝不该触发凭据捕获；排除词优先于登录词。
+const ACTION_EXCLUSION_PATTERN = /refresh|renew|regain|resend|reload|captcha|verif|code|image|picture|register|sign.?up|forgot|reset|获取|重获|重新|刷新|验证码|图片|注册|忘记|找回|重置|发送|换一|看不清|换张/i;
+
+function controlLabel(target: Element): string {
+  return `${target.textContent || ""} ${target.getAttribute("aria-label") || ""}`.toLowerCase();
 }
 
 function isMonicaUiEvent(event: Event, view: Window & typeof globalThis): boolean {
