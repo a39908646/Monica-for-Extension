@@ -82,13 +82,20 @@ export function installCredentialCapture(options: CaptureOptions): () => void {
       return;
     }
     // 捕获阶段 defaultPrevented 还未确定（页面 JS 在冒泡阶段 preventDefault 拦截 AJAX 动作）；
-    // 延迟到事件分派完成后检查，被拦截的 submit（验证码刷新等）不做凭据捕获。
+    // 延迟到事件分派完成后检查。
     handledEvents.add(event);
     const root = captureRootForEvent(deepestEventElement(event, view), rootDocument);
-    clearClickFallback(root);
+    // 登录按钮点击会先触发 click 再触发 submit：点击路径已经排好捕获，这里既不取消也不重复。
+    const clickHandled = clickTimers.has(root);
+    // 被拦截的 submit（验证码刷新、模拟提交等）只有明确由登录控件发起时才算真实提交，
+    // 否则 AJAX 登录页（preventDefault + fetch）永远不会出现保存提示。
+    const submitter = (event as SubmitEvent).submitter;
+    const credentialSubmit = Boolean(submitter) && submitter instanceof view.Element && isCredentialSubmissionControl(submitter);
     const timer = view.setTimeout(() => {
       activeTimers.delete(timer);
-      if (!stopped && !event.defaultPrevented) capture(root);
+      if (stopped || clickHandled) return;
+      if (event.defaultPrevented && !credentialSubmit) return;
+      capture(root);
     }, 0);
     activeTimers.add(timer);
   };

@@ -175,7 +175,7 @@ describe("dynamic credential capture lifecycle", () => {
     stop();
   });
 
-  it("cancels the click fallback when the same action also submits a form", async () => {
+  it("captures a clicked login button that also dispatches submit exactly once", async () => {
     const dom = page('<form><input autocomplete="username" value="single-user"><input type="password" value="single-secret"><button type="button">Login</button></form>');
     const candidates: CredentialCaptureInput[] = [];
     const stop = installCredentialCapture({ rootDocument: dom.window.document, pageLocation: dom.window.location, onCandidate: (candidate) => { candidates.push(candidate); } });
@@ -201,6 +201,39 @@ describe("dynamic credential capture lifecycle", () => {
     await settle(dom);
 
     expect(candidates).toEqual([]);
+    stop();
+  });
+
+  it("still captures a login button click when the SPA prevents the submit", async () => {
+    const dom = page('<form><input autocomplete="username" value="spa-user"><input type="password" value="spa-secret"><button type="submit">登录</button></form>');
+    const candidates: CredentialCaptureInput[] = [];
+    const stop = installCredentialCapture({ rootDocument: dom.window.document, pageLocation: dom.window.location, onCandidate: (candidate) => { candidates.push(candidate); } });
+    const form = dom.window.document.querySelector("form")!;
+    // AJAX 登录页的常态：submit 被页面 JS 拦截后自己 fetch。
+    form.addEventListener("submit", (event) => event.preventDefault());
+    click(dom, form.querySelector("button")!);
+    form.dispatchEvent(new dom.window.SubmitEvent("submit", { bubbles: true, cancelable: true }));
+    await settle(dom);
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({ username: "spa-user", password: "spa-secret" });
+    stop();
+  });
+
+  it("captures a prevented submit when the submitting control is the login button", async () => {
+    const dom = page('<form><input autocomplete="username" value="enter-user"><input type="password" value="enter-secret"><button type="submit">登录</button></form>');
+    const candidates: CredentialCaptureInput[] = [];
+    const stop = installCredentialCapture({ rootDocument: dom.window.document, pageLocation: dom.window.location, onCandidate: (candidate) => { candidates.push(candidate); } });
+    const form = dom.window.document.querySelector("form")!;
+    form.addEventListener("submit", (event) => event.preventDefault());
+    // 键盘 Enter 提交：submitter 是默认的登录按钮，同样算真实提交。
+    const event = new dom.window.SubmitEvent("submit", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "submitter", { value: form.querySelector("button") });
+    form.dispatchEvent(event);
+    await settle(dom);
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({ username: "enter-user", password: "enter-secret" });
     stop();
   });
 
