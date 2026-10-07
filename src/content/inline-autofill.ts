@@ -167,10 +167,15 @@ export function installInlineAutofill(handlers: Handlers, rootDocument: Document
       const username = rootDocument.createElement("small");
       i18n.text(username, () => item.username || tr("无用户名"));
       text.append(title, username);
-      const hint = rootDocument.createElement("span");
-      hint.className = "hint";
-      i18n.text(hint, () => result.status === "locked" && item.allowLockedAutofill ? tr("免解锁填写") : item.hasTotp ? tr("含验证码") : "↵");
-      row.append(text, hint);
+      // 只在有实际信息时附加提示；无提示时不渲染，避免行尾多出一个装饰符号。
+      const hintLabel = result.status === "locked" && item.allowLockedAutofill ? () => tr("免解锁填写")
+        : item.hasTotp ? () => tr("含验证码") : undefined;
+      if (hintLabel) {
+        const hint = rootDocument.createElement("span");
+        hint.className = "hint";
+        i18n.text(hint, hintLabel);
+        row.append(text, hint);
+      } else row.append(text);
       if (result.status === "unlocked") {
         const edit = button("edit");
         i18n.attribute(edit, "aria-label", () => tr("在 Monica 中编辑 {0}", { 0: item.title }));

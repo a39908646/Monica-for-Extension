@@ -109,7 +109,21 @@ describe("inline menu lifecycle and request boundaries", () => {
     input("password").focus();
     expect(query).toHaveBeenCalledOnce();
   });
-  it("offers a per-item edit entry when unlocked and opens the manager with that item", async () => {
+  it("omits the row hint entirely unless the item carries real status information", async () => {
+    input().focus();
+    await vi.waitFor(() => expect(host()).toBeTruthy());
+    const row = shadow!.querySelector(".suggestion") as HTMLButtonElement;
+    expect(row.querySelector(".hint")).toBeNull();
+    expect(row.textContent).not.toContain("↵");
+  });
+  it("keeps the authenticator and locked-autofill labels as row hints", async () => {
+    query.mockImplementation(async id => ({ ...result(id), candidates: [{ ...result(id).candidates[0], hasTotp: true }] }));
+    input().focus();
+    await vi.waitFor(() => expect(host()).toBeTruthy());
+    const row = shadow!.querySelector(".suggestion") as HTMLButtonElement;
+    expect(row.querySelector(".hint")?.textContent).toBe("含验证码");
+  });
+  it("offers a per-item edit entry when unlocked and requests that item", async () => {
     input().focus();
     await vi.waitFor(() => expect(host()).toBeTruthy());
     const menu = shadow!;

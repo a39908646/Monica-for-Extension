@@ -280,6 +280,22 @@
   animation: dialog-in var(--motion-medium) var(--motion-ease);
 }
 
+/* 内联编辑小窗：管理界面不渲染，只留一个居中的提示。 */
+.compact-edit-fallback {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+  min-height: 100dvh;
+  padding: 24px;
+  text-align: center;
+  color: var(--app-text);
+}
+
+.compact-edit-fallback p {
+  margin: 0;
+}
+
 .editor-dialog header {
   display: flex;
   align-items: start;

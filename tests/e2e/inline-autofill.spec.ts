@@ -77,6 +77,12 @@ async function clickMenu(page: Page, text: string) {
   expect(entry).toBeDefined();
   await page.mouse.click(entry!.x, entry!.y);
 }
+async function clickMenuEdit(page: Page) {
+  // 编辑按钮嵌套在整行按钮内，所以行按钮的文字也包含“✎”；只取文字完全等于“✎”的内层按钮中心点。
+  const entry = (await menu(page)).buttons.find(button => button.text === "✎");
+  expect(entry).toBeDefined();
+  await page.mouse.click(entry!.x, entry!.y);
+}
 
 test("anchors to the selected form, supports keyboard filling and sends no secrets in menu markup", async ({ app }, info) => {
   const page = await target(app);
@@ -269,7 +275,7 @@ test("eight languages fit a narrow menu in both themes without changing account 
   }
 });
 
-test("large match sets stay bounded and keyboard users can reach the footer", async ({ app }) => {
+test("large match sets stay bounded and keyboard users can reach the last row", async ({ app }) => {
   const now = new Date().toISOString();
   expect(await app.manager.evaluate(items => chrome.runtime.sendMessage({ type: "VAULT_IMPORT_ITEMS", items }), Array.from({ length: 45 }, (_, index) => ({
     id: `inline-many-${index}`, kind: "login", title: `Additional account ${index}`, username: `user-${index}`, password: "synthetic-many-secret",
@@ -282,7 +288,7 @@ test("large match sets stay bounded and keyboard users can reach the footer", as
   const box = await page.locator(hostSelector).boundingBox();
   expect(box!.height).toBeLessThanOrEqual(360);
   await page.keyboard.press("ArrowUp");
-  const entry = (await menu(page)).buttons.find(button => button.text === "打开 Monica")!;
+  const entry = (await menu(page)).buttons.filter(button => button.text.includes("Additional account")).at(-1)!;
   expect(entry.y).toBeGreaterThan(box!.y);
   expect(entry.y).toBeLessThan(box!.y + box!.height);
   await page.keyboard.press("Escape");
@@ -307,4 +313,36 @@ test("new passwords, readonly fields, offscreen fields and insecure origins do n
   await page.locator("#username").click();
   await page.waitForTimeout(200);
   await expect(page.locator(hostSelector)).toHaveCount(0);
+});
+
+test("per-item edit opens a small editor window for that login and closes it after saving", async ({ app }) => {
+  const page = await target(app);
+  await open(page);
+  const opened = app.context.waitForEvent("page");
+  await clickMenuEdit(page);
+  const editor = await opened;
+  // 只有编辑窗口，没有设置页外壳；窗口类型为独立小窗。
+  await expect(editor.locator(".shell")).toHaveCount(0);
+  await expect(editor.locator(".compact-edit-fallback")).toHaveCount(0);
+  // Playwright 的视口模拟会改写窗口尺寸，这里只断言这是一个独立小窗而不是设置页标签。
+  expect(await editor.evaluate(() => chrome.windows.getCurrent().then(current => current.type))).toBe("popup");
+  await expect(editor.getByRole("heading", { name: "编辑登录项" })).toBeVisible();
+  await expect(editor.getByLabel("名称")).toHaveValue("Mail account");
+  await expect(page.locator(hostSelector)).toHaveCount(0);
+  await editor.getByLabel("名称").fill("Mail account edited");
+  await editor.getByRole("button", { name: "加密保存" }).click();
+  await expect.poll(() => editor.isClosed(), { timeout: 10_000 }).toBe(true);
+  await expect.poll(async () => (await app.manager.evaluate(() => chrome.runtime.sendMessage({ type: "VAULT_GET_ITEM", itemId: "inline-alpha" })) as { data?: { title?: string } })?.data?.title).toBe("Mail account edited");
+});
+
+test("a missing deep-linked login shows a fallback window that hands over to the vault manager", async ({ app }) => {
+  const opened = app.context.waitForEvent("page");
+  await app.manager.evaluate(() => chrome.windows.create({ url: chrome.runtime.getURL("index.html") + "?item=missing-item&mode=edit", type: "popup", width: 520, height: 720 }));
+  const fallbackWindow = await opened;
+  await expect(fallbackWindow.locator(".compact-edit-fallback")).toBeVisible();
+  await expect(fallbackWindow.locator(".shell")).toHaveCount(0);
+  const closed = fallbackWindow.waitForEvent("close");
+  await fallbackWindow.getByRole("button", { name: "打开密码库管理" }).click();
+  await closed;
+  await expect(app.manager).toHaveURL(`chrome-extension://${app.extensionId}/index.html`);
 });

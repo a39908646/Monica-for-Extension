@@ -278,6 +278,7 @@ export type ExtensionRequest =
   | { type: "AUTOFILL_INLINE_FILL"; sessionId: string; itemId: string }
   | { type: "AUTOFILL_INLINE_OPEN"; sessionId: string }
   | { type: "AUTOFILL_INLINE_EDIT"; sessionId: string; itemId: string }
+  | { type: "MONICA_CLOSE_EDIT_WINDOW" }
   | { type: "VAULT_LIST_LOGIN_SUMMARIES" }
   | { type: "VAULT_LOGIN_SECRET"; itemId: string; field: "username" | "password" }
   | { type: "VAULT_MATCH_PASSKEYS"; pageUrl: string }

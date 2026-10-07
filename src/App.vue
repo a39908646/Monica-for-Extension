@@ -1153,27 +1153,64 @@ function openVaultDetail(item: VaultItem) {
   vaultDetailItem.value = item;
 }
 
-// 深链：内联菜单的编辑入口用 index.html?item=<id> 打开指定条目详情。
-// 解锁后条目列表就绪才能找到对应项；找不到（已删除/无权限）就静默留在主页。
+// 深链：内联菜单的编辑入口用 index.html?item=<id> 打开指定条目；
+// 带 mode=edit 时只渲染该条目的编辑表单（chrome.windows 小窗），关窗即结束。
 const DEEP_LINK_ITEM_KEY = "item";
+const DEEP_LINK_MODE_KEY = "mode";
+const DEEP_LINK_EDIT_MODE = "edit";
+const deepLink = readDeepLink();
+const compactEditWindow = ref(deepLink.editWindow);
+const deepLinkItemMissing = ref(false);
 let deepLinkItemConsumed = false;
+let compactEditOpened = false;
+
+function readDeepLink(): { itemId: string; editWindow: boolean } {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const itemId = params.get(DEEP_LINK_ITEM_KEY) || "";
+    const editWindow = Boolean(itemId) && params.get(DEEP_LINK_MODE_KEY) === DEEP_LINK_EDIT_MODE;
+    if (itemId) history.replaceState(null, "", window.location.pathname);
+    return { itemId, editWindow };
+  } catch {
+    return { itemId: "", editWindow: false };
+  }
+}
 
 async function openDeepLinkedItem(): Promise<void> {
   if (deepLinkItemConsumed) return;
-  let itemId = "";
-  try {
-    itemId = new URLSearchParams(window.location.search).get(DEEP_LINK_ITEM_KEY) || "";
-  } catch {
-    return;
-  }
   deepLinkItemConsumed = true;
-  if (!itemId) return;
-  history.replaceState(null, "", window.location.pathname);
-  if (lifecycle.value !== "unlocked" || !vaultItems.value.length) return;
-  const item = vaultItems.value.find(candidate => candidate.id === itemId)
-    || archivedItems.value.find(candidate => candidate.id === itemId)
-    || deletedItems.value.find(candidate => candidate.id === itemId);
-  if (item) openVaultDetail(item);
+  if (!deepLink.itemId || lifecycle.value !== "unlocked") return;
+  const item = vaultItems.value.find(candidate => candidate.id === deepLink.itemId)
+    || archivedItems.value.find(candidate => candidate.id === deepLink.itemId)
+    // 小窗只用于编辑，回收站项目找不到可编辑的原条目，直接提示。
+    || (compactEditWindow.value ? undefined : deletedItems.value.find(candidate => candidate.id === deepLink.itemId));
+  if (!item) return void (deepLinkItemMissing.value = true);
+  if (!compactEditWindow.value) return openVaultDetail(item);
+  document.title = item.title;
+  if (item.kind === "login") openEdit(item);
+  else if (isEditableVaultItem(item)) openVaultEdit(item);
+  else return void (deepLinkItemMissing.value = true);
+  compactEditOpened = true;
+}
+
+// 小窗只有编辑弹窗一个内容：取消、保存或锁定后弹窗关闭，随之关窗。
+watch([editorOpen, vaultEditorOpen], ([loginEditor, itemEditor]) => {
+  if (!compactEditOpened || !compactEditWindow.value || loginEditor || itemEditor) return;
+  closeCompactEditWindow();
+});
+
+/** 小窗收尾：先自我关闭；被引擎忽略时再让后台按发送者窗口兜底关闭。 */
+function closeCompactEditWindow(): void {
+  window.close();
+  window.setTimeout(() => {
+    try { void chrome.runtime.sendMessage({ type: "MONICA_CLOSE_EDIT_WINDOW" }).catch(() => undefined); }
+    catch { /* 扩展上下文正在重载，窗口随浏览器关闭。 */ }
+  }, 300);
+}
+
+async function openManagerFromCompactWindow(): Promise<void> {
+  await chrome.runtime.openOptionsPage();
+  closeCompactEditWindow();
 }
 
 function editFromDetail(item: VaultItem) {
@@ -2405,7 +2442,7 @@ function errorCode(error: unknown): string | undefined {
       </m3e-card>
     </form>
 
-    <div v-else class="shell" :class="{ 'nav-open': mobileNavOpen }">
+    <div v-else-if="!compactEditWindow" class="shell" :class="{ 'nav-open': mobileNavOpen }">
       <a class="skip-link" href="#main-content">{{ tr('跳到主内容') }}</a>
       <div v-if="narrowNavigation && mobileNavOpen" class="navigation-scrim" aria-hidden="true" @click="closeNavigation()"></div>
       <aside id="primary-navigation" class="sidebar" :inert="narrowNavigation && !mobileNavOpen" :aria-hidden="narrowNavigation && !mobileNavOpen ? true : undefined" :role="narrowNavigation && mobileNavOpen ? 'dialog' : undefined" :aria-modal="narrowNavigation && mobileNavOpen ? true : undefined" :aria-label="narrowNavigation && mobileNavOpen ? tr('主导航') : undefined">
@@ -2735,6 +2772,11 @@ function errorCode(error: unknown): string | undefined {
         </section>
         <ListPagination :page="listPagination.page.value" :total="listTotal" target="main-content" @change="listPagination.change" />
       </main>
+    </div>
+
+    <div v-else-if="compactEditWindow && deepLinkItemMissing" class="compact-edit-fallback" role="alert">
+      <p>{{ tr('登录项不存在或已删除。') }}</p>
+      <m3e-button variant="filled" type="button" @click="openManagerFromCompactWindow">{{ tr('打开密码库管理') }}</m3e-button>
     </div>
 
     <VaultItemDetail v-if="vaultDetailItem" :key="vaultDetailItem.id" :item="vaultDetailItem" :items="[...vaultItems, ...archivedItems]" :providers="providers" :consume-otp="advanceHotpItem" @close="vaultDetailItem = undefined" @edit="editFromDetail" />

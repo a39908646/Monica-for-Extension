@@ -357,6 +357,10 @@ chrome.runtime.onMessage.addListener((message: ExtensionRequest, sender, sendRes
   return true;
 });
 
+// 内联编辑小窗的初始尺寸；窗口可继续由用户缩放。
+const INLINE_EDIT_WINDOW_WIDTH = 520;
+const INLINE_EDIT_WINDOW_HEIGHT = 720;
+
 async function handleRequest(request: ExtensionRequest, sender: chrome.runtime.MessageSender): Promise<unknown> {
   if (!WEB_PAGE_REQUEST_TYPES.has(request.type)) assertExtensionPage(sender);
   switch (request.type) {
@@ -534,8 +538,20 @@ async function handleRequest(request: ExtensionRequest, sender: chrome.runtime.M
       await currentFieldRecord(source.tabId, editTarget, request.sessionId);
       const editUrl = new URL(chrome.runtime.getURL("index.html"));
       editUrl.searchParams.set("item", request.itemId);
-      await chrome.tabs.create({ url: editUrl.href });
+      // mode=edit 让管理页只渲染该条目的编辑表单，直接弹小窗而不是先跳到设置页找卡片。
+      editUrl.searchParams.set("mode", "edit");
+      await chrome.windows.create({ url: editUrl.href, type: "popup", width: INLINE_EDIT_WINDOW_WIDTH, height: INLINE_EDIT_WINDOW_HEIGHT, focused: true });
       return { opened: true };
+    }
+    case "MONICA_CLOSE_EDIT_WINDOW": {
+      // 小窗自身 window.close() 被忽略时的兜底：只关闭承载调用页的 popup 窗口，
+      // 绝不触碰普通浏览器窗口（发送者页面自身所在窗口 + 类型为 popup 双重限制）。
+      const windowId = sender.tab?.windowId;
+      if (windowId === undefined) return { closed: false };
+      const target = await chrome.windows.get(windowId).catch(() => undefined);
+      if (!target || target.type !== "popup") return { closed: false };
+      await chrome.windows.remove(windowId);
+      return { closed: true };
     }
     case "VAULT_MATCH_LOGINS": {
       assertExtensionPage(sender);
