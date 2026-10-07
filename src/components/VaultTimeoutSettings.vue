@@ -130,7 +130,7 @@ onMounted(async () => {
         </select>
       </label>
     </div>
-    <p v-if="warning" class="vault-timeout-warning" role="alert">{{ tr('选择「浏览器重启时」或「从不」后，会话密钥会保存在浏览器本地存储中；同一台电脑上的其他程序或用户可以直接解密密码库。') }}</p>
+    <p v-if="warning" class="vault-timeout-warning" role="alert">{{ tr('以你的系统账户运行的其他程序（包括恶意软件与备份工具）可以读取该密钥；管理员账户、系统账户或能直接读取磁盘的人同样可以。') }}</p>
     <p v-else class="vault-timeout-note">{{ tr('其他选项只把会话密钥保存在浏览器会话存储中，关闭浏览器后自动清除。') }}</p>
     <div class="vault-timeout-actions">
       <m3e-button variant="tonal" type="button" :disabled="!ready || busy || !dirty" @click="save">{{ busy ? tr('正在保存…') : tr('保存设置') }}</m3e-button>

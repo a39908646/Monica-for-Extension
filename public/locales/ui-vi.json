@@ -2888,7 +2888,7 @@
   "从不自动锁定": "Không bao giờ tự khóa",
   "{0} 分钟无操作后锁定": "Khóa sau {0} phút không hoạt động",
   "{0} 小时无操作后锁定": "Khóa sau {0} giờ không hoạt động",
-  "选择「浏览器重启时」或「从不」后，会话密钥会保存在浏览器本地存储中；同一台电脑上的其他程序或用户可以直接解密密码库。": "Khi chọn “Khi khởi động lại trình duyệt” hoặc “Không bao giờ”, khóa phiên được lưu trong bộ nhớ cục bộ của trình duyệt. Các chương trình hoặc người dùng khác trên máy này có thể giải mã kho trực tiếp.",
+  "以你的系统账户运行的其他程序（包括恶意软件与备份工具）可以读取该密钥；管理员账户、系统账户或能直接读取磁盘的人同样可以。": "Các chương trình khác chạy dưới tài khoản hệ thống của bạn (bao gồm mã độc và công cụ sao lưu) có thể đọc khóa này; tài khoản quản trị, tài khoản hệ thống hoặc người có quyền truy cập trực tiếp vào đĩa cũng vậy.",
   "其他选项只把会话密钥保存在浏览器会话存储中，关闭浏览器后自动清除。": "Các tùy chọn khác chỉ lưu khóa phiên trong bộ nhớ phiên; khóa sẽ bị xóa khi đóng trình duyệt.",
   "会话超时设置已保存。": "Đã lưu thời gian hết hạn phiên.",
   "未能保存会话超时设置，请重试。": "Không lưu được thời gian hết hạn phiên. Hãy thử lại.",

@@ -2888,7 +2888,7 @@
   "从不自动锁定": "Sperrt nie automatisch",
   "{0} 分钟无操作后锁定": "Sperrt nach {0} Minuten Inaktivität",
   "{0} 小时无操作后锁定": "Sperrt nach {0} Stunden Inaktivität",
-  "选择「浏览器重启时」或「从不」后，会话密钥会保存在浏览器本地存储中；同一台电脑上的其他程序或用户可以直接解密密码库。": "Bei „Beim Browser-Neustart“ oder „Nie“ wird der Sitzungsschlüssel im lokalen Browserspeicher abgelegt. Andere Programme oder Benutzer dieses Computers können den Tresor direkt entschlüsseln.",
+  "以你的系统账户运行的其他程序（包括恶意软件与备份工具）可以读取该密钥；管理员账户、系统账户或能直接读取磁盘的人同样可以。": "Andere Programme, die unter deinem Systemkonto laufen – einschließlich Schadsoftware und Backup-Tools – können diesen Schlüssel lesen; ebenso Administratoren, Systemkonten oder wer direkten Zugriff auf den Datenträger hat.",
   "其他选项只把会话密钥保存在浏览器会话存储中，关闭浏览器后自动清除。": "Andere Optionen halten den Sitzungsschlüssel nur im Sitzungsspeicher; er wird beim Schließen des Browsers gelöscht.",
   "会话超时设置已保存。": "Sitzungs-Timeout gespeichert.",
   "未能保存会话超时设置，请重试。": "Sitzungs-Timeout konnte nicht gespeichert werden. Erneut versuchen.",

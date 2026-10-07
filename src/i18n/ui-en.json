@@ -2888,7 +2888,7 @@
   "从不自动锁定": "Never locks automatically",
   "{0} 分钟无操作后锁定": "Locks after {0} minutes of inactivity",
   "{0} 小时无操作后锁定": "Locks after {0} hours of inactivity",
-  "选择「浏览器重启时」或「从不」后，会话密钥会保存在浏览器本地存储中；同一台电脑上的其他程序或用户可以直接解密密码库。": "With “On browser restart” or “Never”, the session key is kept in local browser storage. Other programs or users on this computer can decrypt the vault directly.",
+  "以你的系统账户运行的其他程序（包括恶意软件与备份工具）可以读取该密钥；管理员账户、系统账户或能直接读取磁盘的人同样可以。": "Other programs running as your system account — including malware and backup tools — can read this key; so can administrators, system accounts or anyone with direct access to the disk.",
   "其他选项只把会话密钥保存在浏览器会话存储中，关闭浏览器后自动清除。": "Other options keep the session key in session storage only; it is cleared when the browser closes.",
   "会话超时设置已保存。": "Session timeout saved.",
   "未能保存会话超时设置，请重试。": "Could not save the session timeout. Try again.",

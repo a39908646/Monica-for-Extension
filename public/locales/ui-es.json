@@ -2888,7 +2888,7 @@
   "从不自动锁定": "Nunca se bloquea automáticamente",
   "{0} 分钟无操作后锁定": "Se bloquea tras {0} minutos de inactividad",
   "{0} 小时无操作后锁定": "Se bloquea tras {0} horas de inactividad",
-  "选择「浏览器重启时」或「从不」后，会话密钥会保存在浏览器本地存储中；同一台电脑上的其他程序或用户可以直接解密密码库。": "Con «Al reiniciar el navegador» o «Nunca», la clave de sesión se guarda en el almacenamiento local del navegador. Otros programas o usuarios de este equipo pueden descifrar la bóveda directamente.",
+  "以你的系统账户运行的其他程序（包括恶意软件与备份工具）可以读取该密钥；管理员账户、系统账户或能直接读取磁盘的人同样可以。": "Otros programas que se ejecutan con tu cuenta del sistema —incluido software malicioso y herramientas de copia de seguridad— pueden leer esta clave; también los administradores, las cuentas de sistema o quien tenga acceso directo al disco.",
   "其他选项只把会话密钥保存在浏览器会话存储中，关闭浏览器后自动清除。": "Las demás opciones solo guardan la clave de sesión en el almacenamiento de sesión; se borra al cerrar el navegador.",
   "会话超时设置已保存。": "Tiempo de espera de sesión guardado.",
   "未能保存会话超时设置，请重试。": "No se pudo guardar el tiempo de espera de sesión. Inténtalo de nuevo.",
