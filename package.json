@@ -15,6 +15,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "dev:sync": "npm run build && node scripts/sync-unpacked.mjs",
     "check": "tsc -b --pretty false && tsc -p tsconfig.interop.json --pretty false",
     "test": "vitest run",
     "test:webdav": "vitest run src/providers/webdav",

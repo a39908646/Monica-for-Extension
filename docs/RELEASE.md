@@ -65,4 +65,41 @@ node scripts/package-release.mjs --allow-dirty
 node scripts/verify-release.mjs --allow-dirty
 ```
 
-此模式仍校验 ZIP、解压目录、文件哈希和两次独立打包的一致性；`SECURITY-EVIDENCE.json` 如实记录未提交工作树，产物只作为本地开发包。默认正式发布门禁仍要求干净工作树。
+此模式仍校验 ZIP、解压目录、文件哈希和两次独立打包的一致性；`SECURITY-EVIDENCE.json` 如实记录未提交工作树，产物只作为本地开发包。默认正式发布门禁仍要求干净工作树。提交后请重新运行 `npm run package:release`，用干净工作树的产物覆盖这份开发包。
+
+## 目录布局与清理
+
+`release/` 只保留当前版本；历史版本放入 `archive/`，宿主产物与扩展产物分开命名。脚本固定读写顶层路径，因此不要把当前版本的产物或 `monica-extension-unpacked/` 移到子目录。
+
+| 路径 | 产生者 | 清理规则 |
+| --- | --- | --- |
+| `monica-extension-X.Y.Z.zip` 及其 `.zip.sha256`、`.sbom.cdx.json`、`.third-party-licenses.json`、`.security-evidence.json` | `package-release.mjs`，由 `verify-release.mjs` 校验 | 当前版本必须留在顶层；旧版本可移入 `archive/<版本>/` |
+| `monica-extension-unpacked/` | 同上，每次打包前完整重建，与 ZIP 条目逐字节一致 | 不要手工编辑；浏览器开发者模式加载这份，更新走打包命令 |
+| `monica-mdbx2-host-windows-x64-<宿主版本>.zip` 及其 `.zip.sha256` | `package-mdbx2-host.mjs`，由 `verify-mdbx2-host-package.mjs` 校验 | 必须留在顶层，与扩展版本号无关 |
+| `archive/<版本>/` | 手工归档的历史版本产物 | 无脚本读取，可直接删除 |
+
+归档一个旧版本：
+
+```bash
+cd release && mkdir -p archive/0.1.37 && mv monica-extension-0.1.37.* archive/0.1.37/
+```
+
+归档不会影响 `package:verify`：它只读取当前版本的 ZIP、四个并列文件和解压目录。
+
+## 自用玩法（不上架）
+
+如果这个仓库只用于个人自用、不提交商店，只保留加载目录即可，`release/` 不需要版本化产物：
+
+```bash
+npm run dev:sync
+```
+
+它等于 `npm run build` 加 `node scripts/sync-unpacked.mjs`：完整重建 `release/monica-extension-unpacked/`（`dist/` 内容加 `LICENSE`），不生成 ZIP、SBOM、许可证清单和发布凭证，并在目录内写一个 `DEV-BUILD.json`，记录版本、源 commit、工作树是否干净和生成时间。浏览器里重新加载扩展、再刷新测试页面即可。
+
+此模式下加载目录不再是任何 ZIP 的逐字节副本，目录内会多出 `DEV-BUILD.json`。需要存档、发给别的机器或临时验证发布链路时，再跑正式/开发打包（它会先清空该目录，标记文件随之消失）：
+
+```bash
+node scripts/package-release.mjs --allow-dirty
+```
+
+Windows 连接组件的 ZIP 仍保留在 `release/` 顶层；`archive/` 里的历史版本可直接删除。
