@@ -41,23 +41,26 @@ $Origins = @($ChromeExtensionId, $EdgeExtensionId) |
     Where-Object { $_ } |
     ForEach-Object { "chrome-extension://$_/" } |
     Sort-Object -Unique
-$Manifest = [ordered]@{
-    name = $HostName
-    description = "Monica MDBX2 Native Host"
-    path = $ExecutablePath
-    type = "stdio"
-    allowed_origins = $Origins
+# PowerShell 5.1 ConvertTo-Json collapses a single-element array into a string, which makes
+# Chromium reject the manifest as an unknown host. Build the JSON explicitly so allowed_origins
+# always stays an array, even with exactly one extension origin.
+function New-HostManifest([string]$Name, [string]$Description, [string]$Executable, [string[]]$AllowedOrigins) {
+    $OriginLines = ($AllowedOrigins | ForEach-Object { '    "' + $_ + '"' }) -join ",`r`n"
+    return @"
+{
+  "name": "$Name",
+  "description": "$Description",
+  "path": "$($Executable.Replace('\', '\\'))",
+  "type": "stdio",
+  "allowed_origins": [
+$OriginLines
+  ]
 }
-$WindowsHelloManifest = [ordered]@{
-    name = $WindowsHelloHostName
-    description = "Monica Windows Hello Host"
-    path = $ExecutablePath
-    type = "stdio"
-    allowed_origins = $Origins
+"@
 }
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-[IO.File]::WriteAllText($ManifestPath, ($Manifest | ConvertTo-Json -Depth 4), $Utf8NoBom)
-[IO.File]::WriteAllText($WindowsHelloManifestPath, ($WindowsHelloManifest | ConvertTo-Json -Depth 4), $Utf8NoBom)
+[IO.File]::WriteAllText($ManifestPath, (New-HostManifest $HostName "Monica MDBX2 Native Host" $ExecutablePath $Origins), $Utf8NoBom)
+[IO.File]::WriteAllText($WindowsHelloManifestPath, (New-HostManifest $WindowsHelloHostName "Monica Windows Hello Host" $ExecutablePath $Origins), $Utf8NoBom)
 
 if ($ChromeExtensionId) {
     $ChromeKey = "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$HostName"
