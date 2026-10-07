@@ -6,6 +6,22 @@ import type { LoginItem, ProviderAccount, TotpItem, VaultItem } from "../core/mo
 import { findBoundTotpItem } from "../core/login-otp";
 import { itemIcon, itemKindLabel, sourceLabel } from "../manager/item-metadata";
 import { parseSshKeyMetadata, parseWifiMetadata } from "../core/special-login";
+import {
+  contentBlockDisplayTitle,
+  contentBlockEditableKeys,
+  contentBlockFieldIsMono,
+  contentBlockFieldIsSecret,
+  contentBlockFieldLabel,
+  contentBlockKindLabel,
+  contentBlockValue,
+  orderContentBlocks,
+  readContentBlocks,
+  resolveContentBlockQrText,
+  withoutContentBlockFields,
+  type ContentBlockQrValues,
+  type StoredContentBlock
+} from "../core/password-content-blocks";
+import { createQrDataUrl } from "../core/otp-qr";
 import TotpCodeCell from "./TotpCodeCell.vue";
 
 const props = defineProps<{
@@ -27,10 +43,16 @@ interface DetailField {
   otp?: boolean;
   custom?: boolean;
   compact?: boolean;
+  /** 二维码内容块的“主动查看”入口：只保存文本，图片在点击后生成。 */
+  qrKey?: string;
+  qrText?: string;
 }
 
 const revealed = reactive(new Set<string>());
 const status = ref("");
+const qrImages = ref<Record<string, string>>({});
+const qrFailed = ref<Record<string, boolean>>({});
+const qrBusy = reactive(new Set<string>());
 
 const editable = computed(() => !props.item.deletedAt && props.item.kind !== "passkey");
 const providerName = computed(() => props.providers.find((provider) => provider.id === props.item.providerRefs[0]?.providerId)?.name || tr('Monica 本地库'));
@@ -97,7 +119,7 @@ const fields = computed<DetailField[]>(() => {
       if (item.totpSecret || item.boundTotpItemId || otpSource.value?.kind === "totp") rows.push({ label: tr('动态验证码'), value: "", otp: true });
       for (const uri of item.uris) rows.push({ label: tr('网址'), value: uri, href: uri });
       if (item.appPackageName) rows.push({ label: tr('关联应用'), value: item.appPackageName });
-      for (const field of item.customFields) rows.push({ label: field.name, value: field.value, secret: field.protected, mono: field.fieldType === "HIDDEN", custom: true });
+      for (const field of withoutContentBlockFields(item.customFields)) rows.push({ label: field.name, value: field.value, secret: field.protected, mono: field.fieldType === "HIDDEN", custom: true });
       return rows;
     }
     case "card": {
@@ -120,7 +142,7 @@ const fields = computed<DetailField[]>(() => {
         item.currency && { label: tr('币种'), value: item.currency },
         item.customerServicePhone && { label: tr('客服电话'), value: item.customerServicePhone }
       ].filter(Boolean) as DetailField[];
-      for (const field of item.customFields || []) rows.push({ label: field.name, value: field.value, secret: field.protected, custom: true });
+      for (const field of withoutContentBlockFields(item.customFields || [])) rows.push({ label: field.name, value: field.value, secret: field.protected, custom: true });
       return rows;
     }
     case "identity": {
@@ -143,7 +165,7 @@ const fields = computed<DetailField[]>(() => {
         item.phone && { label: tr('电话'), value: item.phone },
         item.additionalInfo && { label: tr('补充信息'), value: item.additionalInfo }
       ].filter(Boolean) as DetailField[];
-      for (const field of item.customFields || []) rows.push({ label: field.name, value: field.value, secret: field.protected, custom: true });
+      for (const field of withoutContentBlockFields(item.customFields || [])) rows.push({ label: field.name, value: field.value, secret: field.protected, custom: true });
       return rows;
     }
     case "billing-address": {
@@ -160,7 +182,7 @@ const fields = computed<DetailField[]>(() => {
         item.email && { label: tr('邮箱'), value: item.email }
       ].filter(Boolean) as DetailField[];
       if (item.isDefault) rows.push({ label: tr('默认地址'), value: tr('是') });
-      for (const field of item.customFields || []) rows.push({ label: field.name, value: field.value, secret: field.protected, custom: true });
+      for (const field of withoutContentBlockFields(item.customFields || [])) rows.push({ label: field.name, value: field.value, secret: field.protected, custom: true });
       return rows;
     }
     case "payment-account": {
@@ -184,11 +206,11 @@ const fields = computed<DetailField[]>(() => {
       if (item.billingAddress) rows.push({ label: tr('账单地址'), value: item.billingAddress, mono: true });
       if (item.paymentNotes) rows.push({ label: tr('备注'), value: item.paymentNotes });
       if (item.isDefault) rows.push({ label: tr('默认支付'), value: tr('是') });
-      for (const field of item.customFields || []) rows.push({ label: field.name, value: field.value, secret: field.protected, custom: true });
+      for (const field of withoutContentBlockFields(item.customFields || [])) rows.push({ label: field.name, value: field.value, secret: field.protected, custom: true });
       return rows;
     }
     case "secure-note":
-      return (item.customFields || []).map(field => ({ label: field.name, value: field.value, secret: field.protected, custom: true }));
+      return withoutContentBlockFields(item.customFields || []).map(field => ({ label: field.name, value: field.value, secret: field.protected, custom: true }));
     case "totp": {
       const typeLabels = { TOTP: "TOTP", HOTP: "HOTP", STEAM: "Steam Guard", YANDEX: "Yandex Key", MOTP: "mOTP" } as Record<string, string>;
       const rows: DetailField[] = [
@@ -225,28 +247,126 @@ const fields = computed<DetailField[]>(() => {
 
 const noteContent = computed(() => props.item.kind === "secure-note" ? props.item.content : "");
 const noteTags = computed(() => props.item.kind === "secure-note" ? props.item.tags || [] : []);
+
+interface DetailSectionField extends DetailField { id: string; wide: boolean; }
+interface DetailSection { id: string; title: string; fields: DetailSectionField[]; }
+
+/** 二维码字段模板（`%ACCOUNT%` 等）在当前条目上的取值，与 Android `PasswordQrTemplate.values` 对应。 */
+const qrValues = computed<ContentBlockQrValues>(() => {
+  const item = props.item;
+  const values: Record<string, string> = { ACCOUNT: "", PASSWORD: "", TITLE: item.title || "", URL: "", EMAIL: "", PHONE: "", NOTES: item.notes || "" };
+  if (item.kind === "login") {
+    values.ACCOUNT = item.username;
+    values.PASSWORD = item.password;
+    values.URL = item.uris[0] || "";
+    values.EMAIL = item.email || "";
+    values.PHONE = item.phone || "";
+  } else if (item.kind === "identity") {
+    values.ACCOUNT = item.username || "";
+    values.EMAIL = item.email || "";
+    values.PHONE = item.phone || "";
+  } else if (item.kind === "payment-account") {
+    values.ACCOUNT = item.accountName || "";
+    values.URL = item.website || "";
+    values.EMAIL = item.email || "";
+    values.PHONE = item.phone || "";
+  } else if (item.kind === "billing-address") {
+    values.EMAIL = item.email || "";
+    values.PHONE = item.phone || "";
+  } else if (item.kind === "card") {
+    values.ACCOUNT = item.cardholderName || "";
+  }
+  return { fields: values, custom: withoutContentBlockFields(item.customFields || []) };
+});
+
+/** 内容块分区：可读块按 Android 字段与顺序展示，损坏块只提示并保留原始字段。 */
+const contentBlockSections = computed<DetailSection[]>(() => {
+  const customFields = props.item.customFields || [];
+  const stored: StoredContentBlock[] = orderContentBlocks(readContentBlocks(customFields), customFields);
+  return stored.map(entry => {
+    const sectionId = `block-${entry.id}`;
+    if (!entry.block) {
+      return {
+        id: sectionId,
+        title: tr('暂无法解析的内容'),
+        fields: [{ label: tr('原始内容'), value: tr('原始内容已保留，请使用兼容版本编辑。') }]
+      };
+    }
+    const block = entry.block;
+    const kindLabel = contentBlockKindLabel(block.kind);
+    const blockTitle = contentBlockDisplayTitle(block);
+    const rows: DetailField[] = [];
+    for (const key of contentBlockEditableKeys(block.kind)) {
+      const value = contentBlockValue(block, key);
+      if (!value) continue;
+      rows.push({ label: tr(contentBlockFieldLabel(key)), value, secret: contentBlockFieldIsSecret(key), mono: contentBlockFieldIsMono(key) });
+    }
+    if (block.kind === "QR_CODE") {
+      const qrText = resolveContentBlockQrText(block, qrValues.value);
+      if (qrText) rows.push({ label: tr('二维码'), value: "", qrKey: `${entry.id}-qr`, qrText });
+    }
+    return { id: sectionId, title: blockTitle === kindLabel ? kindLabel : `${kindLabel} · ${blockTitle}`, fields: rows };
+  });
+});
+
+/** 长值、链接、秘密与二维码各占一整行；短字段成对排列。 */
+function isWideField(field: DetailField): boolean {
+  return Boolean(field.qrText || (field.secret && !field.compact) || field.href || field.otp || field.value.length > 28 || field.value.includes("\n"));
+}
+
+function pairSectionFields(section: DetailSection): DetailSection {
+  // Keep short fields in pairs without leaving a half-empty row before a wide value.
+  let unpaired: DetailSectionField | undefined;
+  for (const field of section.fields) {
+    if (field.wide) {
+      if (unpaired) unpaired.wide = true;
+      unpaired = undefined;
+    } else unpaired = unpaired ? undefined : field;
+  }
+  if (unpaired) unpaired.wide = true;
+  return section;
+}
+
 const fieldSections = computed(() => {
-  const indexed = fields.value.map((field, index) => ({
-    ...field,
-    id: `${props.item.id}-${index}`,
-    wide: Boolean((field.secret && !field.compact) || field.href || field.otp || field.value.length > 28 || field.value.includes("\n"))
+  const indexed = fields.value.map((field, index) => ({ ...field, id: `${props.item.id}-${index}`, wide: isWideField(field) }));
+  const blockSections: DetailSection[] = contentBlockSections.value.map(section => ({
+    ...section,
+    fields: section.fields.map((field, index) => ({ ...field, id: `${props.item.id}-${section.id}-${index}`, wide: isWideField(field) }))
   }));
   return [
     { id: "primary", title: tr('主要信息'), fields: indexed.filter(field => !field.custom) },
+    ...blockSections,
     { id: "custom", title: tr('自定义字段'), fields: indexed.filter(field => field.custom) }
-  ].filter(section => section.fields.length).map(section => {
-    // Keep short fields in pairs without leaving a half-empty row before a wide value.
-    let unpaired: (typeof indexed)[number] | undefined;
-    for (const field of section.fields) {
-      if (field.wide) {
-        if (unpaired) unpaired.wide = true;
-        unpaired = undefined;
-      } else unpaired = unpaired ? undefined : field;
-    }
-    if (unpaired) unpaired.wide = true;
-    return section;
-  });
+  ].filter(section => section.fields.length).map(pairSectionFields);
 });
+
+/** 二维码需主动查看：点击后才生成图片，失败不影响文本的查看与复制。 */
+async function renderQr(field: DetailField) {
+  const key = field.qrKey;
+  const text = field.qrText;
+  if (!key || !text || qrBusy.has(key)) return;
+  qrBusy.add(key);
+  try {
+    const image = await createQrDataUrl(text);
+    qrImages.value = { ...qrImages.value, [key]: image };
+  } catch {
+    qrFailed.value = { ...qrFailed.value, [key]: true };
+  } finally {
+    qrBusy.delete(key);
+  }
+}
+
+function qrImage(field: DetailField): string | undefined {
+  return field.qrKey ? qrImages.value[field.qrKey] : undefined;
+}
+
+function qrFailedState(field: DetailField): boolean {
+  return Boolean(field.qrKey && qrFailed.value[field.qrKey]);
+}
+
+function qrBusyState(field: DetailField): boolean {
+  return Boolean(field.qrKey && qrBusy.has(field.qrKey));
+}
 </script>
 
 <template>
@@ -283,7 +403,12 @@ const fieldSections = computed(() => {
                 <div v-for="field in section.fields" :key="field.id" class="detail-row" :class="{ 'detail-row-wide': field.wide, 'detail-row-otp': field.otp }">
                   <dt>{{ field.label }}</dt>
                   <dd>
-                    <TotpCodeCell v-if="field.otp && otpSource" :item="otpSource" class="detail-otp" allow-use show-copy-icon :consume-code="item.deletedAt ? undefined : consumeOtp" />
+                    <template v-if="field.qrText">
+                      <img v-if="qrImage(field)" class="detail-qr" :src="qrImage(field)" :alt="tr('二维码')" width="240" height="240" />
+                      <m3e-button v-else-if="!qrFailedState(field)" variant="tonal" type="button" :disabled="qrBusyState(field)" @click="renderQr(field)">{{ qrBusyState(field) ? tr('处理中…') : tr('查看二维码') }}</m3e-button>
+                      <span v-else class="detail-field-value">{{ tr('此内容超出二维码容量，仍可完整查看或复制。') }}</span>
+                    </template>
+                    <TotpCodeCell v-else-if="field.otp && otpSource" :item="otpSource" class="detail-otp" allow-use show-copy-icon :consume-code="item.deletedAt ? undefined : consumeOtp" />
                     <a v-else-if="field.href && !isHidden(field)" class="detail-field-value" :href="field.href" target="_blank" rel="noreferrer">{{ field.value }}</a>
                     <code v-else-if="field.mono || field.secret" class="detail-field-value">{{ isHidden(field) ? maskedDisplay(field) : field.value }}</code>
                     <span v-else class="detail-field-value">{{ isHidden(field) ? maskedDisplay(field) : field.value }}</span>

@@ -13,6 +13,7 @@ import type {
   VaultItem,
 } from "../core/model";
 import { generateOtpUri, parseOtpUris } from "../core/totp";
+import { isContentBlockInternalField } from "../core/password-content-blocks";
 import { createOtpQrDataUrl, decodeOtpQrImage } from "../core/otp-qr";
 import { exportSteamMaFile, parseSteamMaFileBundle } from "../core/steam-mafile";
 import { itemKindLabel } from "../manager/item-metadata";
@@ -581,12 +582,17 @@ function cloneCustomFields(
 }
 function cleanCustomFields() {
   return fields.customFields
-    .map((field) => ({
-      name: field.name.trim(),
-      value: field.value,
-      fieldType: field.fieldType,
-      protected: field.fieldType === "HIDDEN",
-    }))
+    .map((field) =>
+      // 内容块传输字段（manifest、分片、顺序）逐字保留：不改名、不重新推导隐藏状态。
+      isContentBlockInternalField(field.name)
+        ? { ...field }
+        : {
+            name: field.name.trim(),
+            value: field.value,
+            fieldType: field.fieldType,
+            protected: field.fieldType === "HIDDEN",
+          },
+    )
     .filter((field) => field.name);
 }
 function addCustomField() {
@@ -1333,9 +1339,12 @@ function exportMaFile() {
         >
           <legend>{{ tr('自定义字段') }}</legend>
           <div class="custom-field-list">
-            <div
+            <template
               v-for="(custom, index) in fields.customFields"
               :key="index"
+            >
+            <div
+              v-if="!isContentBlockInternalField(custom.name)"
               class="custom-field-row"
             >
               <input
@@ -1361,6 +1370,7 @@ function exportMaFile() {
                 ><m3e-icon name="delete"></m3e-icon
               ></m3e-icon-button>
             </div>
+            </template>
           </div>
           <m3e-button variant="text" type="button" @click="addCustomField"
             ><m3e-icon slot="icon" name="add"></m3e-icon>{{ tr('添加字段') }}</m3e-button

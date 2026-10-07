@@ -1,5 +1,6 @@
 import { isLoginItem, createLoginItem, type BillingAddressItem, type CardItem, type IdentityItem, type LoginItem, type PasskeyItem, type PaymentAccountItem, type ProviderAccount, type ProviderConflict, type ProviderConflictSummary, type TotpItem, type VaultItem } from "../core/model";
 import { isUnchangedCredentialCapture } from "../core/credential-capture-policy";
+import { withoutContentBlockFields } from "../core/password-content-blocks";
 import { loginMatchScore, matchingLogins } from "../core/matching";
 import { readInlineAutofillEnabled } from "../autofill/inline-preferences";
 import { assertInlineSessionId, INLINE_SUGGESTION_LIMIT, type InlineAutofillResult } from "../autofill/inline-contract";
@@ -3075,7 +3076,7 @@ async function fillLogin(itemId: string, tabId: number, frameId?: number, docume
     type: inlineSessionId ? "MONICA_FILL_INLINE_CREDENTIAL" : "MONICA_FILL_CREDENTIAL",
     sessionId: inlineSessionId,
     expectedOrigin: target.origin,
-    credential: inlineSessionId && field?.role === "totp" ? { totpCode: otp?.code } : { username: item.username, password: item.password, totpCode: otp?.code, customFields: item.customFields.map(({ name, value }) => ({ name, value })) }
+    credential: inlineSessionId && field?.role === "totp" ? { totpCode: otp?.code } : { username: item.username, password: item.password, totpCode: otp?.code, customFields: withoutContentBlockFields(item.customFields).map(({ name, value }) => ({ name, value })) }
   }, { documentId: target.documentId }))) as { ok?: boolean; error?: string; filledUsername?: boolean; filledPassword?: boolean; filledTotp?: boolean; filledCustomFields?: number };
   if (!response?.ok) throw new Error(response?.error || "网页拒绝了填充请求。");
   if (response.filledTotp && otp?.updatedItem) await service.upsertItem(otp.updatedItem);

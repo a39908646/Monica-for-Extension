@@ -684,6 +684,62 @@ button.row-title:focus-visible {
   font: inherit;
 }
 
+/* 内容块：与 Android 端共用受保护字段，编辑器只改字段值。 */
+.content-block-editor {
+  gap: 10px;
+}
+
+.content-block-damaged {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--app-shape-field);
+  color: var(--app-text);
+  background: var(--md-sys-color-surface-container-highest, var(--app-surface-high));
+  font: 400 .8125rem/1.5 var(--font-ui);
+}
+
+.content-block-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border-radius: var(--app-shape-card);
+  background: var(--md-sys-color-surface-container-high, var(--app-surface));
+}
+
+.content-block-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.content-block-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.content-block-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.content-block-qr {
+  display: flex;
+  align-items: center;
+}
+
+.content-block-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 .compact-check {
   min-height: 44px;
   display: inline-flex;

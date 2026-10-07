@@ -25,12 +25,26 @@ import Mdbx2BatchTransferDialog from "./components/Mdbx2BatchTransferDialog.vue"
 import Mdbx2SourceDialog from "./components/Mdbx2SourceDialog.vue";
 import ProviderAttachmentsDialog from "./components/ProviderAttachmentsDialog.vue";
 import M3eConfirmationDialog from "./components/ProviderConfirmationDialog.vue";
+import ContentBlockEditor from "./components/ContentBlockEditor.vue";
 import SteamNetworkActions from "./components/SteamNetworkActions.vue";
 import TotpCodeCell from "./components/TotpCodeCell.vue";
 import VaultItemDetail from "./components/VaultItemDetail.vue";
 import VaultHome from "./components/VaultHome.vue";
 import VaultItemEditor, { type EditableVaultKind } from "./components/VaultItemEditor.vue";
 import { normalizeHost } from "./core/matching";
+import {
+  applyContentBlocks,
+  contentBlockDraft,
+  contentBlockErrorMessageKey,
+  contentBlockToken,
+  createContentBlockDraft,
+  isContentBlockInternalField,
+  readContentBlocks,
+  withoutContentBlockFields,
+  type ContentBlockDraft,
+  type ContentBlockKind,
+  type ContentBlockQrValues
+} from "./core/password-content-blocks";
 import { createLoginItem, isLoginItem, type LoginItem, type LoginUriMatchType, type LoginUriRule, type ProviderAccount, type ProviderConflictResolution, type ProviderConflictSummary, type SecureCustomField, type TotpItem, type VaultItem, type VaultItemKind } from "./core/model";
 import { createQrDataUrl } from "./core/otp-qr";
 import { advanceHotpCounter, findBoundTotpItem } from "./core/login-otp";
@@ -75,6 +89,10 @@ interface LoginForm {
   boundTotpItemId: string;
   uriRules: LoginUriRule[];
   customFields: SecureCustomField[];
+  /** 可编辑的内容块草稿；原始传输字段仍留在 customFields 里并在保存时写回。 */
+  contentBlocks: ContentBlockDraft[];
+  /** 打开编辑器时可读取的内容块令牌，用于识别用户删除的块。 */
+  originalContentBlocks: string[];
   wifiMetadataRaw: string;
   wifi: WifiMetadata;
   sshKeyDataRaw: string;
@@ -1104,6 +1122,8 @@ function openCreate() {
 
 function openEdit(item: LoginItem) {
   editingId.value = item.id;
+  // 内容块：可读块转成草稿便于编辑，损坏块保持原始字段不动，只在编辑器里提示。
+  const storedBlocks = readContentBlocks(item.customFields);
   Object.assign(form, {
     name: item.title,
     username: item.username,
@@ -1122,6 +1142,8 @@ function openEdit(item: LoginItem) {
     boundTotpItemId: item.boundTotpItemId ?? findBoundTotpItem(item, vaultItems.value)?.id ?? "",
     uriRules: effectiveLoginUriRules(item).map((rule) => ({ ...rule })),
     customFields: item.customFields.map((field) => ({ ...field })),
+    contentBlocks: storedBlocks.flatMap((entry) => entry.block ? [contentBlockDraft(entry.block)] : []),
+    originalContentBlocks: storedBlocks.flatMap((entry) => entry.block ? [entry.token] : []),
     wifiMetadataRaw: item.wifiMetadata || "",
     wifi: parseWifiMetadata(item.wifiMetadata),
     sshKeyDataRaw: item.sshKeyData || "",
@@ -1244,7 +1266,14 @@ async function submitCredential() {
   if (form.loginType === "SSH_KEY" && !validJsonObject(form.sshKeyDataRaw)) return void (formError.value = tr('SSH Android 元数据必须是有效的 JSON 对象。'));
   const uriRules = form.uriRules.map((rule) => ({ uri: rule.uri.trim(), matchType: rule.matchType })).filter((rule) => Boolean(rule.uri));
   const uris = uriRules.map((rule) => rule.uri);
-  const customFields = form.customFields.map((field) => ({ ...field, name: field.name.trim() })).filter((field) => field.name || field.value);
+  let customFields: SecureCustomField[];
+  try {
+    customFields = composeLoginCustomFields();
+  } catch (cause) {
+    const messageKey = contentBlockErrorMessageKey(cause);
+    formError.value = messageKey ? tr(messageKey) : cause instanceof Error ? cause.message : tr('保存失败，请重试。');
+    return;
+  }
   const ssoRefEntryId = form.ssoRefEntryId.trim() ? Number(form.ssoRefEntryId) : undefined;
   if (ssoRefEntryId !== undefined && (!Number.isSafeInteger(ssoRefEntryId) || ssoRefEntryId < 0)) return void (formError.value = tr('SSO 引用条目 ID 必须是非负整数。'));
 
@@ -1299,6 +1328,7 @@ function emptyLoginForm(providerId = ""): LoginForm {
     name: "", username: "", password: "", wifiPassword: "", barcodeContent: "", notes: "", favorite: false, archived: false, allowLockedAutofill: false, providerId,
     loginType: "PASSWORD", ssoProvider: "", ssoRefEntryId: "", totpSecret: "", boundTotpItemId: "",
     uriRules: [{ uri: "", matchType: "base-domain" }], customFields: [],
+    contentBlocks: [], originalContentBlocks: [],
     wifiMetadataRaw: "", wifi: parseWifiMetadata(undefined),
     sshKeyDataRaw: "", sshKey: parseSshKeyMetadata(undefined)
   };
@@ -1376,6 +1406,52 @@ function addCustomField() {
 
 function removeCustomField(index: number) {
   form.customFields.splice(index, 1);
+}
+
+/** 编辑器里无法解析的内容块：只提示原始字段已保留，不允许在扩展里覆盖或删除。 */
+const damagedContentBlocks = computed(() => readContentBlocks(form.customFields).filter((entry) => !entry.block));
+
+/** 二维码模板在当前编辑器取值上的展开依据（`%ACCOUNT%`、`%PASSWORD%` 等）。 */
+const editorQrValues = computed<ContentBlockQrValues>(() => ({
+  fields: {
+    ACCOUNT: form.username,
+    PASSWORD: form.password,
+    TITLE: form.name,
+    URL: form.uriRules.find((rule) => rule.uri.trim())?.uri || "",
+    EMAIL: "",
+    PHONE: "",
+    NOTES: form.notes
+  },
+  custom: withoutContentBlockFields(form.customFields)
+}));
+
+function addContentBlock(kind: ContentBlockKind): void {
+  form.contentBlocks.push(createContentBlockDraft(kind));
+}
+
+function removeContentBlockDraft(id: string): void {
+  const index = form.contentBlocks.findIndex((block) => block.id === id);
+  if (index >= 0) form.contentBlocks.splice(index, 1);
+}
+
+function moveContentBlock(index: number, delta: number): void {
+  const target = index + delta;
+  if (index < 0 || target < 0 || target >= form.contentBlocks.length) return;
+  const [moved] = form.contentBlocks.splice(index, 1);
+  form.contentBlocks.splice(target, 0, moved);
+}
+
+/**
+ * 保存时的自定义字段合并：可见字段按原样提交（内容块传输字段不修剪、不改写），
+ * 草稿重新编码成 manifest 与分片，被删除的块连同分片和顺序令牌一起移除。
+ */
+function composeLoginCustomFields(): SecureCustomField[] {
+  const fields = form.customFields
+    .map((field) => isContentBlockInternalField(field.name) ? { ...field } : { ...field, name: field.name.trim() })
+    .filter((field) => field.name || field.value);
+  const kept = new Set(form.contentBlocks.map((block) => contentBlockToken(block.id)));
+  const removed = form.originalContentBlocks.filter((token) => !kept.has(token));
+  return applyContentBlocks(fields, form.contentBlocks, removed);
 }
 
 function uriMatchTypeLabel(type: LoginUriMatchType): string {
@@ -2932,7 +3008,7 @@ function errorCode(error: unknown): string | undefined {
         <label class="field"><span>{{ tr('内嵌验证码密钥') }}</span><input v-model="form.totpSecret" :disabled="Boolean(form.boundTotpItemId)" autocomplete="off" :placeholder="tr('Base32 或 otpauth URI')" /><small>{{ tr('独立验证器优先；可在登录项详情查看和复制验证码。') }}</small></label>
         <fieldset class="editor-fieldset field-wide"><legend>{{ tr('匹配网站（可选）') }}</legend><div class="uri-rule-list"><div v-for="(rule, index) in form.uriRules" :key="index" class="uri-rule-row"><select v-model="rule.matchType" :aria-label="tr('网址 {0} 匹配方式', { 0: index + 1 })"><option v-for="type in (['base-domain','domain','host-port','starts-with','exact','regex','never'] as LoginUriMatchType[])" :key="type" :value="type">{{ uriMatchTypeLabel(type) }}</option></select><input v-model="rule.uri" :aria-label="tr('网址 {0}', { 0: index + 1 })" placeholder="https://accounts.example.com" /><m3e-icon-button type="button" :aria-label="tr('删除网址 {0}', { 0: index + 1 })" @click="removeUriRule(index)"><m3e-icon name="delete"></m3e-icon></m3e-icon-button></div></div><m3e-button variant="text" type="button" @click="addUriRule"><m3e-icon slot="icon" name="add"></m3e-icon>{{ tr('添加网址') }}</m3e-button></fieldset>
       </template>
-      <fieldset class="editor-fieldset field-wide"><legend>{{ tr('自定义字段') }}</legend><div class="custom-field-list"><div v-for="(field, index) in form.customFields" :key="index" class="custom-field-row"><input v-model="field.name" :aria-label="tr('自定义字段 {0} 名称', { 0: index + 1 })" :placeholder="tr('字段名称')" /><input v-model="field.value" :type="field.protected ? 'password' : 'text'" :aria-label="tr('自定义字段 {0} 值', { 0: index + 1 })" :placeholder="tr('字段值')" /><label class="compact-check"><input v-model="field.protected" type="checkbox" /><span>{{ tr('隐藏') }}</span></label><m3e-icon-button type="button" :aria-label="tr('删除自定义字段 {0}', { 0: index + 1 })" @click="removeCustomField(index)"><m3e-icon name="delete"></m3e-icon></m3e-icon-button></div></div><m3e-button variant="text" type="button" @click="addCustomField"><m3e-icon slot="icon" name="add"></m3e-icon>{{ tr('添加字段') }}</m3e-button></fieldset>
+      <ContentBlockEditor :blocks="form.contentBlocks" :damaged="damagedContentBlocks" :qr-values="editorQrValues" @add="addContentBlock" @remove="removeContentBlockDraft" @move="moveContentBlock" /><fieldset class="editor-fieldset field-wide"><legend>{{ tr('自定义字段') }}</legend><div class="custom-field-list"><template v-for="(field, index) in form.customFields" :key="index"><div v-if="!isContentBlockInternalField(field.name)" class="custom-field-row"><input v-model="field.name" :aria-label="tr('自定义字段 {0} 名称', { 0: index + 1 })" :placeholder="tr('字段名称')" /><input v-model="field.value" :type="field.protected ? 'password' : 'text'" :aria-label="tr('自定义字段 {0} 值', { 0: index + 1 })" :placeholder="tr('字段值')" /><label class="compact-check"><input v-model="field.protected" type="checkbox" /><span>{{ tr('隐藏') }}</span></label><m3e-icon-button type="button" :aria-label="tr('删除自定义字段 {0}', { 0: index + 1 })" @click="removeCustomField(index)"><m3e-icon name="delete"></m3e-icon></m3e-icon-button></div></template></div><m3e-button variant="text" type="button" @click="addCustomField"><m3e-icon slot="icon" name="add"></m3e-icon>{{ tr('添加字段') }}</m3e-button></fieldset>
       <label class="field field-wide"><span>{{ tr('备注') }}</span><textarea v-model="form.notes" rows="3" :placeholder="tr('可选备注')"></textarea></label>
       <label class="field field-wide"><span>{{ tr('保存到') }}</span><select v-model="form.providerId" :disabled="Boolean(editingId)"><option v-for="provider in providers" :key="provider.id" :value="provider.id">{{ provider.kind === 'local' ? tr('Monica 本地库') : provider.name }}</option></select><small>{{ editingId ? tr('已有项目保留原密码源。') : tr('外部密码源项目会在下次同步时写入。') }}</small></label>
       <label v-if="form.loginType === 'PASSWORD' && !form.archived" class="locked-autofill-option field-wide"><input v-model="form.allowLockedAutofill" type="checkbox" /><span><strong>{{ tr('允许免解锁填写') }}</strong><small>{{ tr('在此浏览器保存独立加密副本。锁定后，使用此浏览器的人仍可点击填写该账号的用户名和密码；验证码和 Passkey 仍需解锁。') }}</small></span></label>
