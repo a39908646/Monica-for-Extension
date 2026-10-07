@@ -78,6 +78,7 @@ import { isAutofillBlocked, isSaveBlocked, type AutofillSitePolicy } from "../au
 import { normalizeBlockedFieldSignature, type BlockedFieldSignatureRecord } from "../autofill/field-policy";
 import type { AutofillFieldContext } from "../content/field-signature";
 import { configureSessionStorageAccess } from "./startup";
+import { MONICA_UI_PORT } from "../runtime/ui-port";
 import { runtimeInfo } from "../runtime/version";
 
 const LEGACY_VAULT_KEY = "monica.extension.credentials.v1";
@@ -262,7 +263,48 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onStartup.addListener(() => {
   void chrome.alarms.create(AUTO_LOCK_ALARM, { periodInMinutes: 1 });
   void purgeExpiredPasskeySessionState().catch(() => undefined);
+  void lockOnBrowserRestart();
 });
+
+const monicaUiPorts = new Set<chrome.runtime.Port>();
+let immediateLockTimer: ReturnType<typeof setTimeout> | undefined;
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== MONICA_UI_PORT) return;
+  monicaUiPorts.add(port);
+  port.onDisconnect.addListener(() => {
+    monicaUiPorts.delete(port);
+    scheduleImmediateLock();
+  });
+});
+
+/** A short grace period keeps a reloaded manager or popup from locking the vault. */
+function scheduleImmediateLock(): void {
+  if (immediateLockTimer !== undefined) clearTimeout(immediateLockTimer);
+  immediateLockTimer = setTimeout(() => {
+    immediateLockTimer = undefined;
+    void lockOnImmediateTimeout();
+  }, 1_500);
+}
+
+/** "browser-restart" keeps the session in local storage and drops it here. */
+async function lockOnBrowserRestart(): Promise<void> {
+  try {
+    if (await service.status() !== "unlocked") return;
+    if ((await service.getVaultTimeoutSettings()).policy !== "browser-restart") return;
+    await service.lock();
+  } catch { /* The vault is already locked or unavailable. */ }
+}
+
+/** "immediate" locks as soon as the last Monica UI closes. */
+async function lockOnImmediateTimeout(): Promise<void> {
+  if (monicaUiPorts.size) return;
+  try {
+    if (await service.status() !== "unlocked") return;
+    if ((await service.getVaultTimeoutSettings()).policy !== "immediate") return;
+    await service.lock();
+  } catch { /* The vault is already locked or unavailable. */ }
+}
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === AUTO_LOCK_ALARM) {
@@ -531,6 +573,15 @@ async function handleRequest(request: ExtensionRequest, sender: chrome.runtime.M
     case "AUTOFILL_SITE_POLICY_SET":
       assertManagerPage(sender);
       return service.setAutofillSitePolicy(request.policy);
+    case "VAULT_TIMEOUT_GET":
+      assertManagerPage(sender);
+      return service.getVaultTimeoutSettings();
+    case "VAULT_TIMEOUT_SET": {
+      assertManagerPage(sender);
+      const timeout = await service.setVaultTimeoutSettings(request.settings);
+      await lockOnImmediateTimeout();
+      return timeout;
+    }
     case "AUTOFILL_FIELD_POLICY_LIST":
       assertManagerPage(sender);
       return service.listAutofillBlockedFieldSignatures();

@@ -412,6 +412,26 @@ export interface ProviderDiagnosticExport {
 
 import type { BlockedFieldSignatureRecord } from "../autofill/field-policy";
 
+/**
+ * Bitwarden-style session timeout. `minutes` uses `autoLockMinutes`;
+ * `immediate` locks as soon as the last Monica UI closes;
+ * `browser-restart` keeps the session until the browser restarts;
+ * `never` keeps it until the user locks manually.
+ */
+export type VaultTimeoutPolicy = "immediate" | "minutes" | "browser-restart" | "never";
+
+export interface VaultTimeoutSettings {
+  policy: VaultTimeoutPolicy;
+  minutes: number;
+}
+
+export const MIN_AUTO_LOCK_MINUTES = 1;
+export const MAX_AUTO_LOCK_MINUTES = 1440;
+
+export function vaultTimeoutSettingsOf(settings: { autoLockMinutes: number; vaultTimeoutPolicy?: VaultTimeoutPolicy }): VaultTimeoutSettings {
+  return { policy: settings.vaultTimeoutPolicy ?? "minutes", minutes: settings.autoLockMinutes };
+}
+
 export interface VaultState {
   magic: "MONICA_EXTENSION_VAULT";
   schemaVersion: 2;
@@ -426,6 +446,8 @@ export interface VaultState {
   sourceRecords: ProviderSourceRecord[];
   settings: {
     autoLockMinutes: number;
+    /** Missing means the historical 15-minute inactivity policy. */
+    vaultTimeoutPolicy?: VaultTimeoutPolicy;
     defaultProviderId: string;
     protectionMode: "master-password" | "device-key";
     autofillBlockedHosts: string[];
@@ -470,6 +492,7 @@ export function createEmptyVaultState(now = new Date().toISOString()): VaultStat
     sourceRecords: [],
     settings: {
       autoLockMinutes: 15,
+      vaultTimeoutPolicy: "minutes",
       defaultProviderId: localProviderId,
       protectionMode: "master-password",
       autofillBlockedHosts: [],

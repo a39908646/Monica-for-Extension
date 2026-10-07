@@ -13,6 +13,7 @@ import { useListPagination } from "./lib/list-pagination";
 import AppearancePanel from "./components/AppearancePanel.vue";
 import AutofillSitePolicyDialog from "./components/AutofillSitePolicyDialog.vue";
 import InlineAutofillSettings from "./components/InlineAutofillSettings.vue";
+import VaultTimeoutSettings from "./components/VaultTimeoutSettings.vue";
 import BitwardenCollectionsDialog from "./components/BitwardenCollectionsDialog.vue";
 import BitwardenFoldersDialog from "./components/BitwardenFoldersDialog.vue";
 import BitwardenProviderCard from "./components/BitwardenProviderCard.vue";
@@ -47,6 +48,7 @@ import type { Mdbx2HostStatus, Mdbx2VaultRuntimeStatus } from "./providers/mdbx2
 import type { MonicaWebDavConfig } from "./providers/webdav/monica-webdav-provider";
 import type { AndroidTimelineEntrySummary } from "./providers/webdav/android-backup-codec";
 import { ExtensionRuntimeError, vaultClient } from "./runtime/client";
+import { MONICA_UI_PORT } from "./runtime/ui-port";
 import type { KeePassRemoteManagerStatus, KeePassSessionSummary, Mdbx2ManagerSyncStatus, VaultWindowsHelloStatus } from "./runtime/messages";
 import { MIN_MASTER_PASSWORD_LENGTH } from "./security/master-password-policy";
 import type { EncryptedVaultBackup, VaultLifecycleStatus } from "./security/secure-vault-service";
@@ -360,16 +362,37 @@ onMounted(() => {
   navigationMedia.addEventListener("change", updateNavigationLayout);
   document.addEventListener("keydown", handleNavigationKeydown, true);
   chrome.storage.onChanged.addListener(onVaultSessionChanged);
+  connectUiPort();
 });
 onBeforeUnmount(() => {
   navigationMedia.removeEventListener("change", updateNavigationLayout);
   document.removeEventListener("keydown", handleNavigationKeydown, true);
   chrome.storage.onChanged.removeListener(onVaultSessionChanged);
+  uiPort?.disconnect();
+  uiPort = undefined;
 });
+
+let uiPort: chrome.runtime.Port | undefined;
+let uiPortRetries = 0;
+
+/** The "immediate" timeout policy locks the vault once no Monica UI stays connected. */
+function connectUiPort(): void {
+  try {
+    const port = chrome.runtime.connect({ name: MONICA_UI_PORT });
+    uiPort = port;
+    uiPortRetries = 0;
+    port.onDisconnect.addListener(() => {
+      uiPort = undefined;
+      if (uiPortRetries >= 10) return;
+      uiPortRetries += 1;
+      window.setTimeout(connectUiPort, 1_000);
+    });
+  } catch { /* The extension context is reloading. */ }
+}
 
 function onVaultSessionChanged(changes: Record<string, chrome.storage.StorageChange>, area: string) {
   const session = changes["monica.secureVault.session.v1"];
-  if (area === "session" && session?.oldValue?.rawKey && !session.newValue?.rawKey) clearVaultView();
+  if ((area === "session" || area === "local") && session?.oldValue?.rawKey && !session.newValue?.rawKey) clearVaultView();
 }
 
 function updateNavigationLayout(event: MediaQueryListEvent) {
@@ -2624,6 +2647,9 @@ function errorCode(error: unknown): string | undefined {
               <span><strong>{{ tr('自动填充排除项') }}</strong><small>{{ tr('自动填充 {0} 个 · 保存提示 {1} 个', { 0: autofillSitePolicy.blockedHosts.length, 1: autofillSitePolicy.saveBlockedHosts.length }) }}</small></span>
               <m3e-icon class="settings-entry-chevron" name="chevron_right" aria-hidden="true"></m3e-icon>
             </button>
+          </div></m3e-card>
+          <m3e-card variant="filled" class="motion-card"><div slot="content" class="stack">
+            <VaultTimeoutSettings />
           </div></m3e-card>
           <AutofillSitePolicyDialog :open="autofillSitePolicyDialogOpen" @close="autofillSitePolicyDialogOpen = false" @saved="refreshAutofillSitePolicy" />
           <m3e-card variant="filled" class="motion-card windows-hello-card"><div slot="content" class="stack">

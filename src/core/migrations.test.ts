@@ -54,6 +54,19 @@ describe("vault schema migrations", () => {
     expect(migrateVaultState(migrated)).toEqual(migrated);
   });
 
+  it("keeps known session timeout policies and drops unknown ones", () => {
+    const current = createEmptyVaultState("2026-10-07T00:00:00.000Z");
+    expect(current.settings.vaultTimeoutPolicy).toBe("minutes");
+    for (const policy of ["immediate", "minutes", "browser-restart", "never"] as const) {
+      const migrated = migrateVaultState({ ...current, settings: { ...current.settings, vaultTimeoutPolicy: policy } });
+      expect(migrated.settings.vaultTimeoutPolicy).toBe(policy);
+      expect(migrateVaultState(migrated)).toEqual(migrated);
+    }
+    const unknown = migrateVaultState({ ...current, settings: { ...current.settings, vaultTimeoutPolicy: "sometimes" } });
+    expect(unknown.settings.vaultTimeoutPolicy).toBeUndefined();
+    expect(unknown.settings.autoLockMinutes).toBe(15);
+  });
+
   it("carries source envelopes of unrecognised formats through untouched", () => {
     const current = createEmptyVaultState("2026-07-18T00:00:00.000Z");
     const future = {

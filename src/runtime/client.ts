@@ -1,6 +1,6 @@
 import { translateRuntimeError } from "../i18n/runtime";
 import { runtimeInfo, type RuntimeInfo } from "./version";
-import type { ProviderAccount, ProviderConflictResolution, ProviderConflictSummary, ProviderDiagnosticExport } from "../core/model";
+import type { ProviderAccount, ProviderConflictResolution, ProviderConflictSummary, ProviderDiagnosticExport, VaultTimeoutSettings } from "../core/model";
 import type { MonicaWebDavConfig } from "../providers/webdav/monica-webdav-provider";
 import { bytesToBase64 } from "../security/encoding";
 import type { EncryptedVaultBackup } from "../security/secure-vault-service";
@@ -90,6 +90,8 @@ export const vaultClient = {
   fillWallet: (itemId: string, tabId: number, frameId?: number, documentId?: string, expectedOrigin?: string) => send<WalletFillResult>({ type: "VAULT_FILL_WALLET", itemId, tabId, frameId, documentId, expectedOrigin }),
   getAutofillSitePolicy: () => send<AutofillSitePolicy>({ type: "AUTOFILL_SITE_POLICY_GET" }),
   setAutofillSitePolicy: (policy: AutofillSitePolicy) => send<AutofillSitePolicy>({ type: "AUTOFILL_SITE_POLICY_SET", policy }),
+  getVaultTimeoutSettings: () => send<VaultTimeoutSettings>({ type: "VAULT_TIMEOUT_GET" }),
+  setVaultTimeoutSettings: (settings: VaultTimeoutSettings) => send<VaultTimeoutSettings>({ type: "VAULT_TIMEOUT_SET", settings }),
   listAutofillBlockedFields: () => send<BlockedFieldSignatureRecord[]>({ type: "AUTOFILL_FIELD_POLICY_LIST" }),
   isAutofillFieldBlocked: (signature: string) => send<boolean>({ type: "AUTOFILL_FIELD_POLICY_STATUS", signature }),
   setCurrentAutofillFieldBlocked: (blocked: boolean, tabId: number, frameId?: number, documentId?: string, expectedOrigin?: string) =>

@@ -1,5 +1,6 @@
 import { argon2id } from "hash-wasm";
-import type { VaultState } from "../core/model";
+import type { VaultState, VaultTimeoutPolicy } from "../core/model";
+import { MAX_AUTO_LOCK_MINUTES, MIN_AUTO_LOCK_MINUTES } from "../core/model";
 import { MAX_SOURCE_RECORD_TAG_LENGTH, migrateVaultState, validProviderMutationReceipt } from "../core/migrations";
 import { normalizeSitePolicy } from "../autofill/site-policy";
 import { normalizeBlockedFieldSignatures } from "../autofill/field-policy";
@@ -152,13 +153,18 @@ export async function decryptVaultState(envelope: VaultEnvelope, key: CryptoKey)
     (state.settings.windowsHello !== undefined && !validWindowsHelloBinding(state.settings.windowsHello)) ||
     !validSitePolicySettings(state.settings) ||
     !Number.isInteger(state.settings.autoLockMinutes) ||
-    state.settings.autoLockMinutes < 1 ||
-    state.settings.autoLockMinutes > 1440 ||
+    state.settings.autoLockMinutes < MIN_AUTO_LOCK_MINUTES ||
+    state.settings.autoLockMinutes > MAX_AUTO_LOCK_MINUTES ||
+    !validVaultTimeoutPolicy(state.settings.vaultTimeoutPolicy) ||
     !state.providers.some((provider) => provider.id === state.settings.defaultProviderId)
   ) {
     throw new Error("Vault payload is invalid or unsupported");
   }
   return state;
+}
+
+function validVaultTimeoutPolicy(value: unknown): value is VaultTimeoutPolicy | undefined {
+  return value === undefined || value === "immediate" || value === "minutes" || value === "browser-restart" || value === "never";
 }
 
 function validSitePolicySettings(settings: VaultState["settings"]): boolean {

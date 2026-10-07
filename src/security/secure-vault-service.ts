@@ -1,4 +1,5 @@
-import { createEmptyVaultState, type PasskeyItem, type PendingMutation, type ProviderAccount, type ProviderConflict, type ProviderConflictInput, type ProviderConflictResolution, type ProviderDiagnostic, type ProviderDiagnosticExport, type ProviderMutationReceipt, type ProviderReference, type ProviderSourceRecord, type VaultItem, type VaultState, type WindowsHelloBinding } from "../core/model";
+import { createEmptyVaultState, vaultTimeoutSettingsOf, type PasskeyItem, type PendingMutation, type ProviderAccount, type ProviderConflict, type ProviderConflictInput, type ProviderConflictResolution, type ProviderDiagnostic, type ProviderDiagnosticExport, type ProviderMutationReceipt, type ProviderReference, type ProviderSourceRecord, type VaultItem, type VaultState, type VaultTimeoutPolicy, type VaultTimeoutSettings, type WindowsHelloBinding } from "../core/model";
+import { MAX_AUTO_LOCK_MINUTES, MIN_AUTO_LOCK_MINUTES } from "../core/model";
 import type { ProviderAcknowledgedMutation, ProviderRequestedMutation } from "../core/provider";
 import { providerSourceRecordsFor, replaceProviderSourceRecords, validProviderMutationReceipt } from "../core/migrations";
 import { sourceRecordsBudgetError } from "../core/source-records";
@@ -46,6 +47,26 @@ export interface CompletedMdbx2TransferEntry {
 
 const MAX_PROVIDER_MUTATION_RECEIPTS = 500;
 
+/** Backstop for the "immediate" policy when the UI-close signal is missed. */
+const IMMEDIATE_LOCK_GRACE_MS = 60_000;
+const NEVER_EXPIRES_AT = Number.MAX_SAFE_INTEGER;
+
+/** Only "browser-restart" and "never" keep the session key outside session storage. */
+function persistentTimeout(policy: VaultTimeoutPolicy): boolean {
+  return policy === "browser-restart" || policy === "never";
+}
+
+function sessionExpiry(timeout: VaultTimeoutSettings, now: number): number {
+  if (timeout.policy === "minutes") return now + timeout.minutes * 60_000;
+  if (timeout.policy === "immediate") return now + IMMEDIATE_LOCK_GRACE_MS;
+  return NEVER_EXPIRES_AT;
+}
+
+function requireVaultTimeoutPolicy(value: unknown): VaultTimeoutPolicy {
+  if (value === "immediate" || value === "minutes" || value === "browser-restart" || value === "never") return value;
+  throw new Error("自动锁定策略无效。");
+}
+
 export class VaultLockedError extends Error {
   constructor(message = "Vault is locked") {
     super(message);
@@ -86,7 +107,7 @@ export class SecureVaultService {
           await this.storage.write(await encryptVaultState(state, key, withWindowsHelloBindingId(envelope.kdf, state.settings.windowsHello.bindingId)));
           return "locked";
         }
-        await this.startSession(key, state.settings.autoLockMinutes);
+        await this.startSession(key, vaultTimeoutSettingsOf(state.settings));
         return "unlocked";
       } catch {
         return "locked";
@@ -122,7 +143,7 @@ export class SecureVaultService {
     }
     const envelope = await encryptVaultState(state, key, kdf);
     await this.storage.write(envelope);
-    await this.startSession(key, state.settings.autoLockMinutes);
+    await this.startSession(key, vaultTimeoutSettingsOf(state.settings));
     return state;
     });
   }
@@ -153,7 +174,7 @@ export class SecureVaultService {
         // A failed best-effort migration must not make a valid legacy vault unreadable.
       }
     }
-    await this.startSession(key, state.settings.autoLockMinutes);
+    await this.startSession(key, vaultTimeoutSettingsOf(state.settings));
     await this.deviceKeys.setAutoUnlockSuspended(false);
     await this.refreshLockedAutofill(state, await this.requireEnvelope());
     return state;
@@ -211,7 +232,7 @@ export class SecureVaultService {
         await this.sessions.clear();
         throw new VaultHelloRequiredError("Windows Hello 本机绑定与加密密码库不一致，密码库保持锁定。");
       }
-      await this.startSession(key, state.settings.autoLockMinutes);
+      await this.startSession(key, vaultTimeoutSettingsOf(state.settings));
       await this.deviceKeys.setAutoUnlockSuspended(false);
       await this.refreshLockedAutofill(state, await this.requireEnvelope());
       return state;
@@ -222,7 +243,7 @@ export class SecureVaultService {
     return this.runExclusive(async () => {
       const { envelope, key } = await this.unlockedContext();
       const state = await decryptVaultState(envelope, key);
-      await this.touchSession(state.settings.autoLockMinutes);
+      await this.touchSession(vaultTimeoutSettingsOf(state.settings));
       return structuredClone(state.settings.windowsHello);
     });
   }
@@ -338,7 +359,7 @@ export class SecureVaultService {
       if (envelope.kdf.name === "DEVICE-KEY" && envelope.kdf.keyId !== (newKdf.name === "DEVICE-KEY" ? newKdf.keyId : "")) await this.deviceKeys.remove(envelope.kdf.keyId);
       await this.deviceKeys.setAutoUnlockSuspended(false);
       try {
-        await this.startSession(newKey, state.settings.autoLockMinutes);
+        await this.startSession(newKey, vaultTimeoutSettingsOf(state.settings));
       } catch {
         await this.sessions.clear();
         throw new Error("主密码已更改，但无法继续当前会话；请使用新主密码重新解锁。");
@@ -354,7 +375,7 @@ export class SecureVaultService {
       // A vault envelope can be tied to a device-local key.  Backups always get
       // their own password-derived envelope so they can be restored elsewhere.
       const backup = await deriveVaultKey(backupPassword);
-      await this.touchSession(state.settings.autoLockMinutes);
+      await this.touchSession(vaultTimeoutSettingsOf(state.settings));
       return {
         magic: "MONICA_EXTENSION_BACKUP",
         version: 1,
@@ -416,7 +437,7 @@ export class SecureVaultService {
       await this.storage.write(restoredEnvelope);
       await this.refreshLockedAutofill(restoredState, restoredEnvelope);
       try {
-        await this.startSession(backupKey, restoredState.settings.autoLockMinutes);
+        await this.startSession(backupKey, vaultTimeoutSettingsOf(restoredState.settings));
         await this.deviceKeys.setAutoUnlockSuspended(false);
       } catch {
         await this.sessions.clear();
@@ -433,7 +454,7 @@ export class SecureVaultService {
     return this.runExclusive(async () => {
     const { envelope, key } = await this.unlockedContext();
     const state = await decryptVaultState(envelope, key);
-    await this.touchSession(state.settings.autoLockMinutes);
+    await this.touchSession(vaultTimeoutSettingsOf(state.settings));
     return state;
     });
   }
@@ -470,6 +491,26 @@ export class SecureVaultService {
       state.updatedAt = new Date(this.now()).toISOString();
       await this.persist(state, key, envelope.kdf);
       return structuredClone(policy);
+    });
+  }
+
+  async getVaultTimeoutSettings(): Promise<VaultTimeoutSettings> {
+    return vaultTimeoutSettingsOf((await this.readState()).settings);
+  }
+
+  async setVaultTimeoutSettings(input: VaultTimeoutSettings): Promise<VaultTimeoutSettings> {
+    const policy = requireVaultTimeoutPolicy(input.policy);
+    const minutes = input.minutes;
+    if (!Number.isInteger(minutes) || minutes < MIN_AUTO_LOCK_MINUTES || minutes > MAX_AUTO_LOCK_MINUTES) throw new Error("自动锁定时间无效。");
+    return this.runExclusive(async () => {
+      const { state, envelope, key } = await this.mutableContext();
+      state.settings.vaultTimeoutPolicy = policy;
+      state.settings.autoLockMinutes = minutes;
+      state.updatedAt = new Date(this.now()).toISOString();
+      await this.persist(state, key, envelope.kdf);
+      // Re-arm the live session so the new policy applies without relocking the vault.
+      await this.startSession(key, { policy, minutes });
+      return { policy, minutes };
     });
   }
 
@@ -633,7 +674,7 @@ export class SecureVaultService {
       const session = await this.sessions.read();
       if (session && session.expiresAt > this.now()) {
         const state = await decryptVaultState(envelope, await importVaultKey(session.rawKey));
-        await this.touchSession(state.settings.autoLockMinutes);
+        await this.touchSession(vaultTimeoutSettingsOf(state.settings));
         return {
           locked: false, envelopeVersion, items: state.items.filter((item) => !item.deletedAt && !item.archivedAt),
           allowedIds: state.settings.lockedAutofillItemIds || [], blockedHosts: state.settings.autofillBlockedHosts,
@@ -1220,7 +1261,7 @@ export class SecureVaultService {
     await this.refreshLockedAutofill(state, envelope, requireLockedAutofill);
     await this.storage.write(envelope);
     try {
-      await this.touchSession(state.settings.autoLockMinutes);
+      await this.touchSession(vaultTimeoutSettingsOf(state.settings));
     } catch {
       // The encrypted IndexedDB write is already durable. Failing the caller here
       // would make a committed mutation look rolled back and invite duplicate writes.
@@ -1250,20 +1291,20 @@ export class SecureVaultService {
     return { envelope, key: await importVaultKey(session.rawKey) };
   }
 
-  private async startSession(key: CryptoKey, autoLockMinutes: number): Promise<void> {
+  private async startSession(key: CryptoKey, timeout: VaultTimeoutSettings): Promise<void> {
     const now = this.now();
     await this.sessions.write({
       rawKey: await exportVaultKey(key),
       lastActivityAt: now,
-      expiresAt: now + autoLockMinutes * 60_000
-    });
+      expiresAt: sessionExpiry(timeout, now)
+    }, { persistent: persistentTimeout(timeout.policy) });
   }
 
-  private async touchSession(autoLockMinutes: number): Promise<void> {
+  private async touchSession(timeout: VaultTimeoutSettings): Promise<void> {
     const session = await this.sessions.read();
     if (!session) throw new VaultLockedError();
     const now = this.now();
-    await this.sessions.write({ ...session, lastActivityAt: now, expiresAt: now + autoLockMinutes * 60_000 });
+    await this.sessions.write({ ...session, lastActivityAt: now, expiresAt: sessionExpiry(timeout, now) }, { persistent: persistentTimeout(timeout.policy) });
   }
 }
 

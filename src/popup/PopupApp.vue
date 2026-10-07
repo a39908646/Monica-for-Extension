@@ -13,6 +13,7 @@ import { normalizeHost } from "../core/matching";
 import { isLanHost } from "../runtime/sender-policy";
 import { activeScheme, themeColor, useThemePreferences } from "../lib/theme";
 import { ExtensionRuntimeError, vaultClient } from "../runtime/client";
+import { MONICA_UI_PORT } from "../runtime/ui-port";
 import type { LoginMatchSummary, PasskeyMatchSummary, WalletFillKind, WalletMatchSummary } from "../runtime/messages";
 import type { VaultLifecycleStatus } from "../security/secure-vault-service";
 import type { AutofillFieldContext } from "../content/field-signature";
@@ -70,15 +71,26 @@ onMounted(() => {
   (window as unknown as { __monicaPopupRefresh?: () => Promise<void> }).__monicaPopupRefresh = initialize;
   void initialize();
   chrome.storage.onChanged.addListener(onSessionChanged);
+  connectUiPort();
 });
 onUnmounted(() => {
   initializeRevision += 1;
   matchRevision += 1;
   chrome.storage.onChanged.removeListener(onSessionChanged);
+  uiPort?.disconnect();
+  uiPort = undefined;
 });
 
+let uiPort: chrome.runtime.Port | undefined;
+
+/** Registering the popup as an open Monica UI keeps the "immediate" timeout from locking it. */
+function connectUiPort(): void {
+  try { uiPort = chrome.runtime.connect({ name: MONICA_UI_PORT }); }
+  catch { /* The extension context is reloading. */ }
+}
+
 function onSessionChanged(changes: Record<string, chrome.storage.StorageChange>, area: string) {
-  if (area !== "session" || !Object.values(changes).some((change) => change.oldValue?.rawKey !== change.newValue?.rawKey)) return;
+  if ((area !== "session" && area !== "local") || !Object.values(changes).some((change) => change.oldValue?.rawKey !== change.newValue?.rawKey)) return;
   matchRevision += 1;
   matches.value = [];
   passkeys.value = [];

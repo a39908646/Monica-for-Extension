@@ -1,4 +1,4 @@
-import type { LoginItem, LoginUriMatchType, ProviderMutationReceipt, ProviderSourceRecord, VaultItem, VaultState, WindowsHelloBinding } from "./model";
+import type { LoginItem, LoginUriMatchType, ProviderMutationReceipt, ProviderSourceRecord, VaultItem, VaultState, VaultTimeoutPolicy, WindowsHelloBinding } from "./model";
 import { normalizeSitePolicy } from "../autofill/site-policy";
 import { normalizeBlockedFieldSignatures } from "../autofill/field-policy";
 import { normalizeHomePreferences } from "./home-preferences";
@@ -44,6 +44,7 @@ function normalizeSettings(raw: Record<string, unknown>): Record<string, unknown
   return {
     ...raw,
     protectionMode: normalizeProtectionMode(raw.protectionMode),
+    vaultTimeoutPolicy: normalizeVaultTimeoutPolicy(raw.vaultTimeoutPolicy),
     lockedAutofillItemIds: Array.isArray(raw.lockedAutofillItemIds)
       ? [...new Set(raw.lockedAutofillItemIds.filter((id): id is string => typeof id === "string" && id.length > 0 && id.length <= 256))]
       : [],
@@ -124,6 +125,10 @@ function migrateItem(value: unknown): unknown {
 
 function normalizeProtectionMode(value: unknown): VaultState["settings"]["protectionMode"] {
   return value === "device-key" ? "device-key" : "master-password";
+}
+
+function normalizeVaultTimeoutPolicy(value: unknown): VaultTimeoutPolicy | undefined {
+  return value === "immediate" || value === "minutes" || value === "browser-restart" || value === "never" ? value : undefined;
 }
 
 function normalizeWindowsHelloBinding(value: unknown): WindowsHelloBinding | undefined {

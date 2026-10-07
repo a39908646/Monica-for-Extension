@@ -52,6 +52,28 @@ describe("encrypted vault", () => {
     expect((await service.readState()).items).toEqual([expect.objectContaining({ id: login.id })]);
   });
 
+  it("stores the session timeout policy and re-arms the live session", async () => {
+    const sessions = new MemoryVaultSessionStore();
+    const service = new SecureVaultService(new MemoryVaultStorage(), sessions);
+    await service.setup("session timeout password");
+    expect(await service.getVaultTimeoutSettings()).toEqual({ policy: "minutes", minutes: 15 });
+
+    await expect(service.setVaultTimeoutSettings({ policy: "browser-restart", minutes: 15 })).resolves.toEqual({ policy: "browser-restart", minutes: 15 });
+    expect(await service.getVaultTimeoutSettings()).toEqual({ policy: "browser-restart", minutes: 15 });
+    expect((await sessions.read())?.expiresAt).toBe(Number.MAX_SAFE_INTEGER);
+
+    await expect(service.setVaultTimeoutSettings({ policy: "immediate", minutes: 15 })).resolves.toEqual({ policy: "immediate", minutes: 15 });
+    expect((await sessions.read())?.expiresAt).toBeLessThanOrEqual(Date.now() + 60_000);
+
+    await expect(service.setVaultTimeoutSettings({ policy: "minutes", minutes: 60 })).resolves.toEqual({ policy: "minutes", minutes: 60 });
+    expect((await sessions.read())?.expiresAt).toBeGreaterThan(Date.now() + 59 * 60_000);
+
+    await expect(service.setVaultTimeoutSettings({ policy: "minutes", minutes: 0 })).rejects.toThrow("自动锁定时间无效。");
+    await expect(service.setVaultTimeoutSettings({ policy: "sometimes", minutes: 5 } as never)).rejects.toThrow("自动锁定策略无效。");
+    expect(await service.getVaultTimeoutSettings()).toEqual({ policy: "minutes", minutes: 60 });
+    expect((await service.readState()).settings.vaultTimeoutPolicy).toBe("minutes");
+  });
+
   it("encrypts secrets and rejects the wrong password", async () => {
     const storage = new MemoryVaultStorage();
     const sessions = new MemoryVaultSessionStore();
