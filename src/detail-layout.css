@@ -76,6 +76,8 @@
   border-bottom: 1px solid color-mix(in srgb, var(--app-outline) 55%, transparent);
   border-radius: 0;
 }
+/* 卡片已有四周边框，最后一个字段的分隔线和卡片底边重合成双线，去掉。 */
+#root .detail-section .detail-grid > .detail-row:last-child { border-bottom: 0; }
 
 /* 面板够宽时标签在左、值在右：一个字段只占一行，右半边的留白也一起消失。 */
 @container item-detail (min-width: 34rem) {

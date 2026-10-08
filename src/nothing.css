@@ -16,8 +16,8 @@
   --app-shape-dialog: 16px;
   --app-content-max: 1440px;
   --motion-ease: cubic-bezier(.25, .1, .25, 1);
-  /* 焦点环：贴着控件、颜色收敛，避免在小图标按钮外形成一圈又粗又远的黑环。 */
-  --app-focus-color: color-mix(in srgb, var(--app-primary) 82%, transparent);
+  /* 焦点环：弱化成中性浅灰而非主题色，键盘导航仍可辨认，但不再扎眼。 */
+  --app-focus-color: color-mix(in srgb, var(--app-text) 42%, transparent);
   --app-focus-ring: 2px solid var(--app-focus-color);
   --app-focus-offset: 1px;
   font-family: var(--font-ui);
@@ -85,11 +85,15 @@ m3e-card {
   --m3e-outlined-card-outline-color: var(--app-outline);
   box-shadow: none;
 }
-/* 焦点环粗细要在宿主上覆盖：组件在 :host 里写死了默认值，主题层盖不住。 */
+/* 焦点环要在宿主上覆盖：组件在 :host 里写死了默认值，主题层盖不住。
+   收紧到零偏移、取消放大动画（默认 growthFactor=2 会把环从 2px 撑到 4px 再弹回），
+   圆形/药丸控件外的环才不会又粗又晃。 */
 m3e-button,
 m3e-icon-button,
 m3e-chip {
   --m3e-focus-ring-thickness: 2px;
+  --m3e-focus-ring-outward-offset: 0px;
+  --m3e-focus-ring-growth-factor: 1;
 }
 m3e-button {
   max-inline-size: 100%;
