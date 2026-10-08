@@ -141,18 +141,20 @@ function publicKeyCredential(result: Record<string, any>): Credential {
   const responsePrototype = result.operation === "create" ? window.AuthenticatorAttestationResponse?.prototype : window.AuthenticatorAssertionResponse?.prototype;
   const response = Object.create(responsePrototype || Object.prototype);
   const binaryFields = result.operation === "create" ? ["clientDataJSON", "attestationObject"] : ["clientDataJSON", "authenticatorData", "signature", "userHandle"];
-  for (const key of binaryFields) Object.defineProperty(response, key, { enumerable: true, value: decode(responseData[key]) });
+  for (const key of binaryFields) Object.defineProperty(response, key, { enumerable: true, writable: true, configurable: true, value: decode(responseData[key]) });
   if (result.operation === "create") {
     Object.defineProperties(response, {
-      getAuthenticatorData: { value: () => decode(responseData.authenticatorData) }, getPublicKey: { value: () => decode(responseData.publicKey) },
-      getPublicKeyAlgorithm: { value: () => responseData.publicKeyAlgorithm }, getTransports: { value: () => ["internal"] }
+      getAuthenticatorData: { writable: true, configurable: true, value: () => decode(responseData.authenticatorData) }, getPublicKey: { writable: true, configurable: true, value: () => decode(responseData.publicKey) },
+      getPublicKeyAlgorithm: { writable: true, configurable: true, value: responseData.publicKeyAlgorithm }, getTransports: { writable: true, configurable: true, value: () => ["internal"] }
     });
   }
   const credential = Object.create(window.PublicKeyCredential?.prototype || Object.prototype);
+  // writable/configurable 必须为 true：GitHub 的 @github/webauthn-json ponyfill 等消费方
+  // 会在凭据对象上赋值（如 toJSON）或重新定义属性，只读会导致 TypeError。
   Object.defineProperties(credential, {
-    id: { enumerable: true, value: result.id }, rawId: { enumerable: true, value: decode(result.rawId) }, type: { enumerable: true, value: "public-key" },
-    response: { enumerable: true, value: response }, authenticatorAttachment: { enumerable: true, value: "platform" },
-    getClientExtensionResults: { value: () => result.clientExtensionResults || {} }, toJSON: { value: () => ({ id: result.id, rawId: result.rawId, type: "public-key", authenticatorAttachment: "platform", response: responseData, clientExtensionResults: result.clientExtensionResults || {} }) }
+    id: { enumerable: true, writable: true, configurable: true, value: result.id }, rawId: { enumerable: true, writable: true, configurable: true, value: decode(result.rawId) }, type: { enumerable: true, writable: true, configurable: true, value: "public-key" },
+    response: { enumerable: true, writable: true, configurable: true, value: response }, authenticatorAttachment: { enumerable: true, writable: true, configurable: true, value: "platform" },
+    getClientExtensionResults: { writable: true, configurable: true, value: () => result.clientExtensionResults || {} }, toJSON: { writable: true, configurable: true, value: () => ({ id: result.id, rawId: result.rawId, type: "public-key", authenticatorAttachment: "platform", response: responseData, clientExtensionResults: result.clientExtensionResults || {} }) }
   });
   return credential as Credential;
 }
