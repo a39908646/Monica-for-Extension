@@ -399,8 +399,8 @@ body.popup-body {
 }
 
 .login-row-main:focus-visible {
-  outline: var(--app-focus-ring);
-  outline-offset: -3px;
+  outline: none;
+  box-shadow: var(--app-focus-shadow);
   border-radius: var(--app-shape-card);
 }
 

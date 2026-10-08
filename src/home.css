@@ -15,7 +15,7 @@
 .vault-home button:disabled { opacity: .45; cursor: default; }
 .vault-home button:not(:disabled):hover { background: var(--app-surface-high); }
 .vault-home .home-button-primary:not(:disabled):hover { background: var(--app-text); opacity: .85; }
-.vault-home :where(button, input, select, [tabindex='-1']):focus-visible { outline: var(--app-focus-ring); outline-offset: var(--app-focus-offset); }
+.vault-home :where(button, input, select, [tabindex='-1']):focus-visible { outline: none; box-shadow: var(--app-focus-shadow); }
 .home-count { flex-shrink: 0; font: 400 .75rem/1.5 var(--font-data); color: var(--app-muted); font-variant-numeric: tabular-nums; }
 .home-status { font: 400 .75rem/1.6 var(--font-data); color: var(--app-muted); padding: 0 0 12px; overflow-wrap: anywhere; }
 .home-error { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; color: var(--md-sys-color-error, #ba151c); overflow-wrap: anywhere; }
@@ -33,7 +33,6 @@
 .home-disclosure { display: flex; align-items: center; gap: 8px; max-width: 100%; min-height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--app-text); font: inherit; padding: 6px 4px; cursor: pointer; overflow-wrap: anywhere; text-align: left; }
 .home-disclosure > m3e-icon { flex: 0 0 20px; font-size: 20px; }
 .home-group { border: 1px solid var(--app-outline); border-radius: 12px; background: var(--app-surface); overflow: hidden; }
-.home-group :where(button):focus-visible { outline-offset: -4px; }
 .home-row-grid { display: grid; grid-template-columns: minmax(0, 1fr); }
 .home-item-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 76px; padding: 14px 16px; border: 0; border-bottom: 1px solid var(--app-outline); background: transparent; text-align: left; color: var(--app-text); cursor: pointer; }
 .home-item-row:last-child { border-bottom: 0; }
@@ -54,7 +53,6 @@
 .home-deck::after { inset: 7px 10px 20px; z-index: -1; background: var(--app-surface); }
 .home-card-surface { border: 1px solid var(--app-outline); border-radius: 12px; background: var(--app-surface); overflow: hidden; }
 .home-featured-card { display: flex; flex-direction: column; width: 100%; min-height: 224px; gap: 24px; padding: 24px; border: 0; background: transparent; color: var(--app-text); text-align: left; cursor: pointer; }
-.home-card-surface .home-featured-card:focus-visible { outline-offset: -4px; }
 .home-featured-meta, .home-featured-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; color: var(--app-muted); font: 400 .75rem/1.6 var(--font-data); }
 .home-featured-kind { display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; }
 .home-featured-meta m3e-icon, .home-featured-footer m3e-icon { flex: 0 0 24px; }

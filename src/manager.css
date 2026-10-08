@@ -3,8 +3,9 @@
 }
 
 #root m3e-icon {
-  inline-size: max(var(--m3e-icon-size, var(--app-icon-medium)), var(--app-icon-medium));
-  block-size: max(var(--m3e-icon-size, var(--app-icon-medium)), var(--app-icon-medium));
+  /* 跟着字号走，否则比 24px 小的按钮里图标会偏离中心。 */
+  inline-size: 1em;
+  block-size: 1em;
   flex: 0 0 auto;
 }
 
@@ -460,8 +461,8 @@ button.row-title:hover {
 }
 
 button.row-title:focus-visible {
-  outline: var(--app-focus-ring);
-  outline-offset: -3px;
+  outline: none;
+  box-shadow: var(--app-focus-shadow);
 }
 
 .login-item-dialog {
@@ -531,8 +532,8 @@ button.row-title:focus-visible {
 }
 
 .login-type-segments input:focus-visible + span {
-  outline: var(--app-focus-ring);
-  outline-offset: 1px;
+  outline: none;
+  box-shadow: var(--app-focus-shadow);
 }
 
 .editor-fieldset {
@@ -634,8 +635,8 @@ button.row-title:focus-visible {
 }
 
 .barcode-render-modes label:has(input:focus-visible) {
-  outline: var(--app-focus-ring);
-  outline-offset: 1px;
+  outline: none;
+  box-shadow: var(--app-focus-shadow);
 }
 
 .special-transfer img {

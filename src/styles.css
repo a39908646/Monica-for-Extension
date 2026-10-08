@@ -110,8 +110,8 @@ select:focus-visible,
 textarea:focus-visible,
 a:focus-visible,
 [tabindex]:focus-visible {
-  outline: var(--app-focus-ring, 2px solid var(--app-primary));
-  outline-offset: var(--app-focus-offset, 1px);
+  outline: none;
+  box-shadow: var(--app-focus-shadow);
 }
 
 button,
@@ -191,8 +191,10 @@ m3e-button {
 m3e-icon {
   --m3e-icon-size: var(--app-icon-medium);
   display: inline-grid;
-  width: var(--app-icon-medium);
-  height: var(--app-icon-medium);
+  /* 盒子必须跟着字号走：写死 24px 时，20px 字号下的图标会被画在盒子左上角，
+     看起来偏离控件中心。 */
+  width: 1em;
+  height: 1em;
   place-items: center;
   line-height: 1;
   vertical-align: middle;
@@ -1117,8 +1119,8 @@ tbody tr:hover td {
 }
 
 .item-card-main:focus-visible {
-  outline: var(--app-focus-ring, 2px solid var(--app-primary));
-  outline-offset: -2px;
+  outline: none;
+  box-shadow: var(--app-focus-shadow);
   border-radius: var(--app-shape-card);
 }
 
