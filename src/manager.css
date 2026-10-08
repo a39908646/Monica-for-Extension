@@ -1,7 +1,4 @@
-#root {
-  --app-drawer-width: clamp(256px, 16rem, 360px);
-}
-
+/* 设计令牌统一在 tokens.css，本文件只消费。 */
 #root m3e-icon {
   /* 跟着字号走，否则比 24px 小的按钮里图标会偏离中心。 */
   inline-size: 1em;
@@ -37,7 +34,7 @@
 .hello-unlock-action {
   display: grid;
   gap: 6px;
-  border-top: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border-top: 1px solid var(--app-outline);
   padding-top: 14px;
 }
 
@@ -71,7 +68,7 @@
 .hello-status-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  border: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border: 1px solid var(--app-outline);
   border-radius: var(--app-shape-card);
   overflow: hidden;
 }
@@ -84,7 +81,7 @@
 }
 
 .hello-status-grid > span + span {
-  border-left: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border-left: 1px solid var(--app-outline);
 }
 
 .hello-status-grid strong,
@@ -98,7 +95,7 @@
 
 .nav-count {
   min-width: 28px;
-  border-radius: 999px;
+  border-radius: var(--app-shape-pill);
   padding: 3px 8px;
   background: color-mix(in srgb, var(--app-primary) 14%, transparent);
   text-align: center;
@@ -238,7 +235,7 @@
 }
 
 .recovery-panel {
-  border-top: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border-top: 1px solid var(--app-outline);
   padding-top: 16px;
 }
 
@@ -348,7 +345,7 @@
   gap: 12px;
   align-items: start;
   padding: 10px 0;
-  border-bottom: 1px solid var(--m3e-color-outline-variant, var(--app-outline));
+  border-bottom: 1px solid var(--app-outline);
 }
 
 .detail-row dt {
@@ -379,7 +376,7 @@
 .detail-note {
   display: grid;
   gap: 8px;
-  border: 1px solid var(--m3e-color-outline-variant, var(--app-outline));
+  border: 1px solid var(--app-outline);
   border-radius: var(--app-shape-card);
   padding: 14px 16px;
 }
@@ -404,8 +401,8 @@
 
 .detail-tag {
   padding: 4px 12px;
-  border: 1px solid var(--m3e-color-outline-variant, var(--app-outline));
-  border-radius: 8px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
   font-size: 0.85rem;
 }
 
@@ -489,7 +486,7 @@ button.row-title:focus-visible {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
   gap: 4px;
-  border: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border: 1px solid var(--app-outline);
   border-radius: var(--app-shape-card);
   padding: 4px;
 }
@@ -537,7 +534,7 @@ button.row-title:focus-visible {
   min-width: 0;
   display: grid;
   gap: 12px;
-  border: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border: 1px solid var(--app-outline);
   border-radius: var(--app-shape-card);
   padding: 12px;
 }
@@ -563,7 +560,7 @@ button.row-title:focus-visible {
 
 .special-advanced {
   min-width: 0;
-  border-top: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border-top: 1px solid var(--app-outline);
   padding-top: 12px;
 }
 
@@ -602,8 +599,8 @@ button.row-title:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, minmax(92px, 1fr));
   gap: 4px;
-  border: 1px solid var(--m3e-color-outline-variant, var(--app-outline));
-  border-radius: 8px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
   padding: 4px;
 }
 
@@ -647,7 +644,7 @@ button.row-title:focus-visible {
 .special-transfer img.barcode-linear-preview {
   width: min(100%, 360px);
   height: 112px;
-  border-radius: 8px;
+  border-radius: var(--app-shape-field);
 }
 
 .uri-rule-list,
@@ -701,7 +698,7 @@ button.row-title:focus-visible {
   display: grid;
   gap: 10px;
   padding: 12px;
-  border: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border: 1px solid var(--app-outline);
   border-radius: var(--app-shape-card);
   background: var(--md-sys-color-surface-container-high, var(--app-surface));
 }
@@ -779,10 +776,6 @@ button.row-title:focus-visible {
   color: var(--app-text);
   background: var(--md-sys-color-surface-container-highest, var(--app-surface-high));
   font: inherit;
-}
-
-.field select:focus {
-  box-shadow: var(--app-focus-shadow);
 }
 
 .provider-page {
@@ -985,7 +978,7 @@ button.row-title:focus-visible {
   position: sticky;
   bottom: 0;
   z-index: 1;
-  border-top: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border-top: 1px solid var(--app-outline);
   padding: 12px 0 0;
   background: var(--md-sys-color-surface-container-high, var(--app-surface));
 }
@@ -1009,7 +1002,7 @@ button.row-title:focus-visible {
 .keepass-remote-facts {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border: 1px solid var(--app-outline);
   border-radius: var(--app-shape-card);
   overflow: hidden;
 }
@@ -1022,7 +1015,7 @@ button.row-title:focus-visible {
 }
 
 .keepass-remote-facts > span + span {
-  border-left: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border-left: 1px solid var(--app-outline);
 }
 
 .keepass-remote-facts strong,
@@ -1080,7 +1073,7 @@ button.row-title:focus-visible {
 .mdbx2-card-facts {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border: 1px solid var(--app-outline);
   border-radius: var(--app-shape-card);
   overflow: hidden;
 }
@@ -1093,7 +1086,7 @@ button.row-title:focus-visible {
 }
 
 .mdbx2-card-facts > span + span {
-  border-left: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border-left: 1px solid var(--app-outline);
 }
 
 .mdbx2-card-facts strong,
@@ -1137,7 +1130,7 @@ button.row-title:focus-visible {
 
 .provider-session-summary.locked p,
 .provider-capability-note {
-  border: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border: 1px solid var(--app-outline);
   border-radius: var(--app-shape-card);
   padding: 10px 12px;
   color: var(--app-muted);
@@ -1218,10 +1211,6 @@ button.row-title:focus-visible {
 .provider-boundaries {
   display: grid;
   gap: 8px;
-}
-
-.field textarea:focus {
-  box-shadow: var(--app-focus-shadow);
 }
 
 .password-field {
@@ -1307,7 +1296,7 @@ button.row-title:focus-visible {
   }
 
   .hello-status-grid > span + span {
-    border-top: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+    border-top: 1px solid var(--app-outline);
     border-left: 0;
   }
 
@@ -1320,7 +1309,7 @@ button.row-title:focus-visible {
   }
 
   .keepass-remote-facts > span:nth-child(n + 3) {
-    border-top: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+    border-top: 1px solid var(--app-outline);
   }
 
   .keepass-remote-error {
@@ -1341,7 +1330,7 @@ button.row-title:focus-visible {
   }
 
   .mdbx2-card-facts > span:nth-child(n + 3) {
-    border-top: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+    border-top: 1px solid var(--app-outline);
   }
 
   .vault-item-form {
@@ -1420,7 +1409,7 @@ button.row-title:focus-visible {
   max-width: 100%;
   min-height: 44px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--app-shape-field);
   padding: 0 10px;
   color: inherit;
   background: transparent;
@@ -1463,8 +1452,8 @@ button.row-title:focus-visible {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
-  border: 1px solid var(--m3e-color-outline-variant, var(--app-outline));
-  border-radius: 8px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
   padding: 20px;
   background: var(--m3e-color-surface-container, var(--app-surface));
 }
@@ -1500,8 +1489,8 @@ button.row-title:focus-visible {
   max-width: 100%;
   flex-wrap: wrap;
   justify-content: center;
-  border: 1px solid var(--m3e-color-outline-variant, var(--app-outline));
-  border-radius: 8px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
   padding: 4px;
   background: var(--m3e-color-surface-container, var(--app-surface));
 }
@@ -1541,8 +1530,8 @@ button.row-title:focus-visible {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
   gap: 8px 16px;
-  border: 1px solid var(--m3e-color-outline-variant, var(--app-outline));
-  border-radius: 8px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
   padding: 12px 16px;
 }
 
@@ -1555,8 +1544,8 @@ button.row-title:focus-visible {
   width: 5rem !important;
   height: 2.75rem;
   padding: 0 10px;
-  border: 1px solid var(--m3e-color-outline-variant, var(--app-outline));
-  border-radius: 8px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
   background: transparent;
   color: inherit;
 }
@@ -1576,8 +1565,8 @@ button.row-title:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid var(--m3e-color-outline-variant, var(--app-outline));
-  border-radius: 8px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
 }
 
 .generator-symbol-chip span { min-width: 1.25rem; text-align: center; }
@@ -1586,8 +1575,8 @@ button.row-title:focus-visible {
   display: grid;
   gap: 8px;
   padding: 12px 16px;
-  border: 1px solid var(--m3e-color-outline-variant, var(--app-outline));
-  border-radius: 8px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
 }
 
 .generator-ssh-facts { display: flex; flex-wrap: wrap; gap: 4px 24px; margin: 0; }
@@ -1601,15 +1590,15 @@ button.row-title:focus-visible {
   font-size: 0.85rem;
   line-height: 1.5;
   padding: 8px 10px;
-  border: 1px solid var(--m3e-color-outline-variant, var(--app-outline));
-  border-radius: 8px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
   background: transparent;
   color: inherit;
   resize: vertical;
 }
 
 .generator-history {
-  border-block: 1px solid var(--m3e-color-outline-variant, var(--app-outline));
+  border-block: 1px solid var(--app-outline);
 }
 
 .generator-history > summary {
@@ -1649,7 +1638,7 @@ button.row-title:focus-visible {
   grid-template-columns: minmax(9rem, 0.8fr) minmax(12rem, 1fr) auto;
   align-items: center;
   gap: 12px;
-  border-top: 1px solid var(--m3e-color-outline-variant, var(--app-outline));
+  border-top: 1px solid var(--app-outline);
   padding: 6px 0;
 }
 
@@ -1661,7 +1650,7 @@ button.row-title:focus-visible {
 .generator-history-meta span,
 .generator-history-meta time { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .generator-history-actions { display: flex; align-items: center; gap: 2px; }
-.generator-history-confirm { min-height: 36px; border: 0; border-radius: 8px; padding: 0 10px; color: var(--m3e-color-on-error-container, #410002); background: var(--m3e-color-error-container, #ffdad6); cursor: pointer; font: inherit; font-size: 0.8125rem; font-weight: 600; }
+.generator-history-confirm { min-height: 36px; border: 0; border-radius: var(--app-shape-field); padding: 0 10px; color: var(--m3e-color-on-error-container, #410002); background: var(--m3e-color-error-container, #ffdad6); cursor: pointer; font: inherit; font-size: 0.8125rem; font-weight: 600; }
 .generator-history-empty { margin: 0; padding: 12px 4px; color: var(--m3e-color-on-surface-variant, var(--app-muted)); }
 
 .otp-transfer {
@@ -1694,8 +1683,8 @@ button.row-title:focus-visible {
   max-width: 100%;
   height: auto;
   aspect-ratio: 1;
-  border: 1px solid var(--m3e-color-outline-variant, var(--app-outline));
-  border-radius: 8px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
 }
 
 @media (max-width: 560px) {
@@ -1727,7 +1716,7 @@ button.row-title:focus-visible {
 .steam-account-card {
   --m3e-card-shape: 8px;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--app-shape-field);
 }
 
 .steam-account-card > [slot="content"] {
@@ -1768,7 +1757,7 @@ button.row-title:focus-visible {
 .steam-account-visual video {
   width: 144px;
   aspect-ratio: 16 / 9;
-  border-radius: 8px;
+  border-radius: var(--app-shape-field);
   object-fit: cover;
 }
 
@@ -1792,8 +1781,8 @@ button.row-title:focus-visible {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
   padding: 4px;
-  border: 1px solid var(--m3e-color-outline-variant);
-  border-radius: 8px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
   background: var(--m3e-color-surface-container);
 }
 
@@ -1850,7 +1839,7 @@ button.row-title:focus-visible {
   gap: 0;
   margin: 0;
   padding: 0;
-  border-block: 1px solid var(--m3e-color-outline-variant);
+  border-block: 1px solid var(--app-outline);
   list-style: none;
 }
 
@@ -1861,7 +1850,7 @@ button.row-title:focus-visible {
   gap: 12px;
   min-height: 72px;
   padding: 12px 8px;
-  border-bottom: 1px solid var(--m3e-color-outline-variant);
+  border-bottom: 1px solid var(--app-outline);
 }
 
 .steam-item-list li:last-child {
@@ -1876,7 +1865,7 @@ button.row-title:focus-visible {
 .steam-list-icon {
   width: 48px;
   height: 48px;
-  border-radius: 8px;
+  border-radius: var(--app-shape-field);
   background: var(--m3e-color-surface-container-high);
 }
 
@@ -1926,7 +1915,7 @@ button.row-title:focus-visible {
   min-height: 44px;
   padding: 8px 12px;
   border: 1px solid var(--m3e-color-outline);
-  border-radius: 8px;
+  border-radius: var(--app-shape-field);
   background: var(--m3e-color-surface-container-lowest);
   color: var(--m3e-color-on-surface);
   font: inherit;
@@ -1953,7 +1942,7 @@ button.row-title:focus-visible {
   min-height: 56px;
   padding: 8px 12px;
   border: 1px solid var(--m3e-color-primary);
-  border-radius: 8px;
+  border-radius: var(--app-shape-field);
   background: var(--m3e-color-primary-container);
   color: var(--m3e-color-on-primary-container);
 }
@@ -1989,7 +1978,7 @@ button.row-title:focus-visible {
   gap: 8px;
   margin: 0;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--app-shape-field);
 }
 
 .steam-revoke-panel {
@@ -1997,7 +1986,7 @@ button.row-title:focus-visible {
   gap: 16px;
   padding: 16px;
   border: 1px solid var(--m3e-color-error);
-  border-radius: 8px;
+  border-radius: var(--app-shape-field);
   background: var(--m3e-color-error-container);
   color: var(--m3e-color-on-error-container);
 }

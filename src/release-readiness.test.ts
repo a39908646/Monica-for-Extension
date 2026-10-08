@@ -107,17 +107,29 @@ describe("visual design contract", () => {
   });
 
   it("keeps the shared M3E shape and icon tokens stable", async () => {
+    const tokens = await read("src/tokens.css");
     const styles = await read("src/styles.css");
     const popupStyles = await read("src/popup/popup.css");
-    expect(styles).toContain("--app-shape-card: 8px");
-    expect(styles).toContain("--app-shape-field: 8px");
-    expect(styles).toContain("--app-shape-dialog: 16px");
-    expect(styles).toContain("--app-icon-small: 20px");
-    expect(styles).toContain("--app-icon-medium: 24px");
+    // 形状/图标令牌只在 tokens.css 定义一次。这里断言的是实际生效的值：旧断言写的是
+    // styles.css 里的 --app-shape-card: 8px，而那个值一直被 nothing.css 的 12px 覆盖，
+    // 等于把一个不生效的值锁进了契约。
+    expect(tokens).toContain("--app-shape-card: 12px");
+    expect(tokens).toContain("--app-shape-field: 8px");
+    expect(tokens).toContain("--app-shape-dialog: 16px");
+    expect(tokens).toContain("--app-shape-pill: 999px");
+    expect(tokens).toContain("--app-icon-small: 20px");
+    expect(tokens).toContain("--app-icon-medium: 24px");
     expect(styles).toMatch(/m3e-icon\s*\{[^}]*--m3e-icon-size:\s*var\(--app-icon-medium\)/s);
     expect(styles).toMatch(/m3e-icon-button\s*\{[^}]*min-width:\s*44px[^}]*min-height:\s*44px/s);
     expect(popupStyles).toMatch(/\.popup-shell m3e-button\s*\{[^}]*--m3e-button-icon-size:\s*var\(--app-icon-medium\)/s);
     expect(popupStyles).toMatch(/\.popup-shell m3e-icon-button\s*\{[^}]*--m3e-icon-button-icon-size:\s*var\(--app-icon-medium\)/s);
+
+    // 页面 CSS 只消费令牌：形状与焦点令牌不允许在 tokens.css 之外再定义一次，
+    // 否则又会回到「同一个值在两个文件各写一遍」的老路。
+    for (const file of ["src/styles.css", "src/manager.css", "src/nothing.css", "src/home.css", "src/detail-layout.css", "src/responsive.css", "src/popup/popup.css"]) {
+      const css = await read(file);
+      expect(css, `${file} 不应重复定义形状/焦点令牌`).not.toMatch(/--app-shape-(?:card|field|dialog|pill)\s*:|--app-focus-(?:wash|shadow)\s*:/);
+    }
   });
 
   it("does not nest M3E cards in manager templates", async () => {

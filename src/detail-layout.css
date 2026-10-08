@@ -10,7 +10,7 @@
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--app-outline);
-  border-radius: 16px;
+  border-radius: var(--app-shape-dialog);
   background: var(--app-surface);
   box-shadow: none;
   container: item-detail / inline-size;
@@ -117,7 +117,7 @@
 #root .detail-field-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: nowrap; gap: 4px; }
 #root .detail-field-actions > m3e-icon-button { flex: none; }
 /* 内容块二维码：主动查看后才出现，不参与字段成对排列。 */
-#root .detail-qr { display: block; width: 240px; max-width: 100%; height: auto; margin-block: 4px; border: 1px solid var(--app-outline); border-radius: 12px; background: #fff; }
+#root .detail-qr { display: block; width: 240px; max-width: 100%; height: auto; margin-block: 4px; border: 1px solid var(--app-outline); border-radius: var(--app-shape-card); background: #fff; }
 #root .detail-row-otp dd { grid-template-columns: minmax(0, 1fr); }
 #root .detail-otp { gap: 12px 20px; align-items: center; }
 #root .detail-otp > button { padding: 8px 12px; margin-left: -12px; gap: 16px; border: 1px solid transparent; }

@@ -1,0 +1,93 @@
+/* 设计令牌的唯一来源。改样式之前先读这段分层规则。
+ *
+ * 1. 令牌层（本文件，--app-* / --font-* / --motion-* / --app-shape-*）：
+ *    颜色、形状、间距、动效的唯一事实来源。任何页面 CSS 都不应再定义 --app-*，
+ *    也不应重复手写 color-mix(...) 这类派生值 —— 需要新的档位就在这里加一个。
+ * 2. 调色板（--app-bg / --app-surface / --app-primary …）由 src/lib/theme.ts 在
+ *    运行时以行内样式写到 :root，优先级高于任何样式表。这里给的是默认
+ *    “nothing” 调色板，只作首帧兜底，避免主题脚本跑起来之前闪一下别的颜色。
+ * 3. 组件层（--m3e-* / --md-sys-*）在 nothing.css 里把组件令牌映射到 --app-*。
+ *    组件在 :host 里写死默认值的少数几个（例如焦点环厚度）必须写在组件宿主
+ *    选择器上，写在主题层盖不住。
+ * 4. 页面层（styles / manager / home / detail-layout / popup / responsive）只消费
+ *    令牌，不再发明新的颜色、圆角或悬停配方。
+ */
+:root {
+  color-scheme: light;
+
+  /* --- 调色板兜底（运行时被 theme.ts 覆盖） --- */
+  --app-bg: #f5f5f3;
+  --app-surface: #ffffff;
+  --app-surface-high: #eeeee9;
+  --app-selected: #e8e8e4;
+  --app-primary: #1a1a1a;
+  --app-accent: #d71921;
+
+  /* --- 文本、描边、错误色 --- */
+  --app-text: #1a1a1a;
+  --app-muted: #62625e;
+  --app-outline: #cdcdc7;
+  --app-error: #ba151c;
+  /* 列表 / 卡片 / 表格里反复出现的细分隔线：比控件边框更浅。 */
+  --app-hairline: color-mix(in srgb, var(--app-outline) 36%, transparent);
+
+  /* --- 字体 --- */
+  --font-ui: 'Space Grotesk', 'Segoe UI', 'Microsoft YaHei UI', system-ui, sans-serif;
+  --font-data: 'Space Mono', 'Microsoft YaHei UI', ui-monospace, monospace;
+  --font-display: Doto, var(--font-data);
+
+  /* --- 形状：圆角只走这四个，不要在页面里写死 px --- */
+  --app-shape-card: 12px;
+  --app-shape-field: 8px;
+  --app-shape-dialog: 16px;
+  --app-shape-pill: 999px;
+
+  /* --- 图标：m3e-icon 的盒子跟随字号（1em），这两个值决定字号 --- */
+  --app-icon-small: 20px;
+  --app-icon-medium: 24px;
+
+  /* --- 交互：焦点和悬停都只用背景色，不画描边/边框 --- */
+  --app-focus-wash: color-mix(in srgb, var(--app-text) 12%, transparent);
+  --app-focus-shadow: inset 0 0 0 100px var(--app-focus-wash);
+  /* 行 / 卡片悬停：实色，直接盖在自身背景上。 */
+  --app-hover-surface: color-mix(in srgb, var(--app-selected) 60%, var(--app-surface));
+  /* 小控件悬停：半透明，叠在任意背景上都成立。 */
+  --app-hover-wash: color-mix(in srgb, var(--app-selected) 45%, transparent);
+
+  /* --- 布局 --- */
+  --app-content-max: 1440px;
+  --app-drawer-width: 256px;
+  --app-control-height: max(44px, calc(1.25rem + 16px));
+  --app-field-height: max(48px, calc(1.5rem + 16px));
+  --app-action-gap: 8px;
+  --app-page-gutter: clamp(16px, 2.4vw, 40px);
+
+  /* --- 动效 --- */
+  --motion-fast: 140ms;
+  --motion-medium: 240ms;
+  --motion-ease: cubic-bezier(.25, .1, .25, 1);
+
+  font-family: var(--font-ui);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --app-bg: #000000;
+  --app-surface: #111111;
+  --app-surface-high: #1a1a1a;
+  --app-selected: #252525;
+  --app-primary: #ffffff;
+  --app-accent: #d71921;
+  --app-text: #e8e8e8;
+  --app-muted: #aaa;
+  --app-outline: #414141;
+  --app-error: #ff7478;
+}
+
+/* 抽屉宽度只在这里定义一次（原先 styles / nothing / manager / responsive 各写了一个，
+   实际生效的是 responsive 的 :root #root，这里保留同一个值）。 */
+#root {
+  --app-drawer-width: clamp(256px, 17.5rem, 360px);
+}

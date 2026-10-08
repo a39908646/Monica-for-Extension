@@ -5,9 +5,9 @@
 .home-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; padding-bottom: 28px; }
 .home-source-select { display: grid; gap: 6px; flex: 0 1 320px; max-width: 100%; }
 .home-source-select > span, .home-caption { font: 400 .75rem/1.5 var(--font-data); color: var(--app-muted); letter-spacing: .025em; text-transform: uppercase; overflow-wrap: anywhere; }
-.home-source-select select { width: 100%; min-height: max(44px, 2.75rem); padding: 10px 32px 10px 14px; font-size: .875rem; border: 1px solid var(--app-outline); border-radius: 8px; background: var(--app-surface); color: var(--app-text); text-overflow: ellipsis; }
+.home-source-select select { width: 100%; min-height: max(44px, 2.75rem); padding: 10px 32px 10px 14px; font-size: .875rem; border: 1px solid var(--app-outline); border-radius: var(--app-shape-field); background: var(--app-surface); color: var(--app-text); text-overflow: ellipsis; }
 .home-toolbar-actions, .home-panel-actions, .home-panel-actions > div, .home-reorder-actions, .home-database-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.home-button, .home-icon-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 44px; min-height: max(44px, 2.75rem); max-width: 100%; padding: 10px 16px; border: 1px solid var(--app-outline); border-radius: 999px; background: transparent; color: var(--app-text); font: 400 .8125rem/1.5 var(--font-ui); text-align: center; overflow-wrap: anywhere; cursor: pointer; }
+.home-button, .home-icon-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 44px; min-height: max(44px, 2.75rem); max-width: 100%; padding: 10px 16px; border: 1px solid var(--app-outline); border-radius: var(--app-shape-pill); background: transparent; color: var(--app-text); font: 400 .8125rem/1.5 var(--font-ui); text-align: center; overflow-wrap: anywhere; cursor: pointer; }
 .home-button > m3e-icon, .home-icon-button > m3e-icon, .home-item-row > m3e-icon, .home-picker-item > m3e-icon, .home-type-button > m3e-icon { flex: 0 0 24px; }
 .home-icon-button { padding: 10px; }
 .home-button-primary { background: var(--app-text); color: var(--app-bg); border-color: var(--app-text); }
@@ -15,7 +15,6 @@
 .vault-home button:disabled { opacity: .45; cursor: default; }
 .vault-home button:not(:disabled):hover { background: var(--app-surface-high); }
 .vault-home .home-button-primary:not(:disabled):hover { background: var(--app-text); opacity: .85; }
-.vault-home :where(button, input, select, [tabindex='-1']):focus-visible { outline: none; box-shadow: var(--app-focus-shadow); }
 .home-count { flex-shrink: 0; font: 400 .75rem/1.5 var(--font-data); color: var(--app-muted); font-variant-numeric: tabular-nums; }
 .home-status { font: 400 .75rem/1.6 var(--font-data); color: var(--app-muted); padding: 0 0 12px; overflow-wrap: anywhere; }
 .home-error { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; color: var(--md-sys-color-error, #ba151c); overflow-wrap: anywhere; }
@@ -30,9 +29,9 @@
 .home-section-heading > .home-database-tools { flex: 0 1 auto; }
 .home-section-heading p { margin-top: 8px; color: var(--app-muted); font-size: .8125rem; line-height: 1.6; overflow-wrap: anywhere; }
 .home-module[data-expanded='false'] > .home-section-heading { margin-bottom: 0; }
-.home-disclosure { display: flex; align-items: center; gap: 8px; max-width: 100%; min-height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--app-text); font: inherit; padding: 6px 4px; cursor: pointer; overflow-wrap: anywhere; text-align: left; }
+.home-disclosure { display: flex; align-items: center; gap: 8px; max-width: 100%; min-height: 44px; border: 0; border-radius: var(--app-shape-field); background: transparent; color: var(--app-text); font: inherit; padding: 6px 4px; cursor: pointer; overflow-wrap: anywhere; text-align: left; }
 .home-disclosure > m3e-icon { flex: 0 0 20px; font-size: 20px; }
-.home-group { border: 1px solid var(--app-outline); border-radius: 12px; background: var(--app-surface); overflow: hidden; }
+.home-group { border: 1px solid var(--app-outline); border-radius: var(--app-shape-card); background: var(--app-surface); overflow: hidden; }
 .home-row-grid { display: grid; grid-template-columns: minmax(0, 1fr); }
 .home-item-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 76px; padding: 14px 16px; border: 0; border-bottom: 1px solid var(--app-outline); background: transparent; text-align: left; color: var(--app-text); cursor: pointer; }
 .home-item-row:last-child { border-bottom: 0; }
@@ -48,10 +47,10 @@
 .home-type-button > span:not(.home-count) { flex: 1 1 0; overflow-wrap: anywhere; }
 .home-empty { padding: 20px 16px; color: var(--app-muted); font-size: .875rem; line-height: 1.7; overflow-wrap: anywhere; }
 .home-deck { position: relative; padding-top: 14px; isolation: isolate; }
-.home-deck::before, .home-deck::after { content: ''; position: absolute; border: 1px solid var(--app-outline); border-radius: 12px; background: var(--app-surface-high); pointer-events: none; }
+.home-deck::before, .home-deck::after { content: ''; position: absolute; border: 1px solid var(--app-outline); border-radius: var(--app-shape-card); background: var(--app-surface-high); pointer-events: none; }
 .home-deck::before { inset: 0 20px 28px; z-index: -2; }
 .home-deck::after { inset: 7px 10px 20px; z-index: -1; background: var(--app-surface); }
-.home-card-surface { border: 1px solid var(--app-outline); border-radius: 12px; background: var(--app-surface); overflow: hidden; }
+.home-card-surface { border: 1px solid var(--app-outline); border-radius: var(--app-shape-card); background: var(--app-surface); overflow: hidden; }
 .home-featured-card { display: flex; flex-direction: column; width: 100%; min-height: 224px; gap: 24px; padding: 24px; border: 0; background: transparent; color: var(--app-text); text-align: left; cursor: pointer; }
 .home-featured-meta, .home-featured-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; color: var(--app-muted); font: 400 .75rem/1.6 var(--font-data); }
 .home-featured-kind { display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; }
@@ -63,7 +62,7 @@
 .home-card-controls { display: flex; align-items: center; justify-content: center; gap: 12px; max-width: 100%; margin-top: 12px; }
 .home-card-position { font: 400 .75rem/1.6 var(--font-data); color: var(--app-muted); text-align: center; overflow-wrap: anywhere; }
 .home-chevron-back { rotate: 180deg; }
-.home-card-empty { display: grid; justify-items: start; gap: 12px; min-height: 224px; padding: 24px; align-content: center; border: 1px dashed var(--app-outline); border-radius: 12px; }
+.home-card-empty { display: grid; justify-items: start; gap: 12px; min-height: 224px; padding: 24px; align-content: center; border: 1px dashed var(--app-outline); border-radius: var(--app-shape-card); }
 .home-card-empty p { font-size: 1rem; }
 .home-card-empty > span { color: var(--app-muted); font-size: .875rem; line-height: 1.7; overflow-wrap: anywhere; }
 .home-quick-actions { padding: 0 24px 16px; }
@@ -72,7 +71,7 @@
 .home-quick-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
 .home-copy-status { font-size: .75rem; line-height: 1.6; color: var(--app-muted); overflow-wrap: anywhere; }
 .home-copy-status:not(:empty) { margin-top: 8px; }
-.home-search { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 12px; border: 1px solid var(--app-outline); border-radius: 8px; background: var(--app-surface); max-width: 100%; }
+.home-search { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 12px; border: 1px solid var(--app-outline); border-radius: var(--app-shape-field); background: var(--app-surface); max-width: 100%; }
 .home-search input { border: 0; outline-offset: 0; width: 100%; min-height: max(36px, 2.25rem); background: transparent; color: var(--app-text); font-size: .875rem; }
 .home-folder-search { flex: 0 1 200px; }
 .home-source-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -85,7 +84,7 @@
 .home-lifecycle-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .home-lifecycle-grid .home-item-row { border-bottom: 0; }
 .home-lifecycle-grid .home-item-row:first-child { border-inline-end: 1px solid var(--app-outline); }
-.home-browse-all { width: 100%; min-height: 52px; margin-top: 20px; border-radius: 12px; background: var(--app-surface-high); }
+.home-browse-all { width: 100%; min-height: 52px; margin-top: 20px; border-radius: var(--app-shape-card); background: var(--app-surface-high); }
 .home-empty-layout { display: grid; justify-items: start; gap: 16px; padding: 32px 0; }
 .home-empty-layout p { color: var(--app-muted); font-size: .875rem; line-height: 1.7; overflow-wrap: anywhere; }
 .home-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -93,7 +92,7 @@
 .home-context-copy { flex: 1 1 200px; min-width: 0; display: grid; gap: 6px; font-size: .875rem; overflow-wrap: anywhere; }
 .home-context-copy strong { color: var(--app-text); font-weight: 500; }
 .home-context-copy > span { font-size: .75rem; }
-.home-editor-dialog { container: home-editor / inline-size; width: min(880px, calc(100vw - 32px)); height: min(760px, calc(100dvh - 32px)); max-width: none; max-height: none; padding: 0; border: 1px solid var(--app-outline); border-radius: 12px; background: var(--app-surface); color: var(--app-text); overflow: hidden; }
+.home-editor-dialog { container: home-editor / inline-size; width: min(880px, calc(100vw - 32px)); height: min(760px, calc(100dvh - 32px)); max-width: none; max-height: none; padding: 0; border: 1px solid var(--app-outline); border-radius: var(--app-shape-card); background: var(--app-surface); color: var(--app-text); overflow: hidden; }
 .home-editor-dialog[open] { display: flex; flex-direction: column; }
 .home-editor-dialog::backdrop { background: rgb(0 0 0 / .4); }
 .home-editor-error, .home-editor-status { flex: 0 0 auto; padding: 16px 24px 0; font-size: .8125rem; line-height: 1.6; overflow-wrap: anywhere; }

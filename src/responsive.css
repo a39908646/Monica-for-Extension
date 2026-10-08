@@ -1,12 +1,6 @@
 /* Geometry shared by manager and popup. Scoped selectors keep these constraints
-   independent of Vite's ordering of shared and entry-specific CSS chunks. */
-:root {
-  --app-control-height: max(44px, calc(1.25rem + 16px));
-  --app-field-height: max(48px, calc(1.5rem + 16px));
-  --app-action-gap: 8px;
-  --app-page-gutter: clamp(16px, 2.4vw, 40px);
-}
-
+   independent of Vite's ordering of shared and entry-specific CSS chunks.
+   高度/间距令牌统一在 tokens.css。 */
 :is(#root, #popup-root) .language-picker { flex-wrap: wrap; max-width: 100%; }
 :is(#root, #popup-root) .language-picker select { flex: 1 1 10rem; width: 0; min-width: min(100%, 10rem); }
 :is(#root, #popup-root) .language-error { flex-basis: 100%; overflow-wrap: anywhere; }
@@ -36,10 +30,6 @@
   --m3e-icon-button-default-leading-space: 10px;
   --m3e-icon-button-default-trailing-space: 10px;
   --m3e-icon-button-icon-size: 24px;
-}
-
-:root #root {
-  --app-drawer-width: clamp(256px, 17.5rem, 360px);
 }
 
 #root .sidebar {
@@ -236,7 +226,7 @@
 @media (max-width: 560px) {
   #root .page-heading { padding: 16px 0 24px; }
   #root :is(.modal-backdrop, .appearance-modal, .detail-backdrop) { padding: 8px; align-items: center; }
-  #root [role='dialog']:not(.sidebar) { max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); border-radius: 16px; }
+  #root [role='dialog']:not(.sidebar) { max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); border-radius: var(--app-shape-dialog); }
   #root :is(.login-item-dialog, .vault-item-dialog):has(.editor-with-actions) { padding: 16px; }
   #root .editor-with-actions > footer > m3e-button { flex: 1 0 auto; min-width: 0; }
   #root .editor-fields { padding-inline: 2px; }

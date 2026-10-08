@@ -1,5 +1,6 @@
 import { createApp } from "vue";
 import PopupApp from "./PopupApp.vue";
+import "../tokens.css";
 import "../styles.css";
 import "./popup.css";
 import "../nothing.css";

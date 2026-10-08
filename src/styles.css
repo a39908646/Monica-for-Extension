@@ -23,36 +23,7 @@
   font-feature-settings: "liga";
 }
 
-:root {
-  color-scheme: light;
-  --app-bg: #fbfffd;
-  --app-surface: #eef8f5;
-  --app-surface-high: #e2efec;
-  --app-selected: #cdeeea;
-  --app-primary: #0b6f69;
-  --app-accent: #f5c84c;
-  --app-text: #1d1b20;
-  --app-muted: #49454f;
-  --app-drawer-width: 256px;
-  --app-content-max: 1280px;
-  --app-shape-card: 8px;
-  --app-shape-field: 8px;
-  --app-shape-dialog: 16px;
-  --app-icon-small: 20px;
-  --app-icon-medium: 24px;
-  --motion-fast: 140ms;
-  --motion-medium: 240ms;
-  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
-  font-family: Inter, "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-}
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --app-text: #e7e4e8;
-  --app-muted: #c9c4cf;
-}
+/* 设计令牌（调色板 / 形状 / 字体 / 动效 / 布局）统一在 tokens.css，本文件只消费。 */
 
 html,
 body,
@@ -104,15 +75,7 @@ body {
   transform: translateY(0);
 }
 
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-a:focus-visible,
-[tabindex]:focus-visible {
-  outline: none;
-  box-shadow: var(--app-focus-shadow);
-}
+/* 全局焦点规则统一在 nothing.css（tokens.css 之后加载），此处不再重复。 */
 
 button,
 input,
@@ -165,7 +128,7 @@ m3e-card {
   --m3e-filled-card-text-color: var(--md-sys-color-on-surface, var(--app-text));
   --m3e-filled-card-hover-container-elevation: var(--md-sys-elevation-level1, 0 1px 3px rgba(0, 0, 0, 0.14));
   --m3e-outlined-card-container-color: color-mix(in srgb, var(--md-sys-color-surface-container-low, var(--app-surface)) 92%, var(--app-bg));
-  --m3e-outlined-card-outline-color: color-mix(in srgb, var(--md-sys-color-outline-variant, #cac4d0) 54%, transparent);
+  --m3e-outlined-card-outline-color: color-mix(in srgb, var(--app-outline) 54%, transparent);
   border-radius: var(--m3e-card-shape);
   overflow: hidden;
 }
@@ -298,7 +261,7 @@ m3e-icon-button {
 }
 
 .login-card .security-note {
-  border: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border: 1px solid var(--app-outline);
   background: transparent;
 }
 
@@ -338,11 +301,6 @@ m3e-icon-button {
   transition: background var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
 }
 
-.field input:focus,
-.field select:focus {
-  box-shadow: var(--app-focus-shadow);
-}
-
 .form-error {
   color: var(--md-sys-color-error, #b3261e);
   font-weight: 600;
@@ -377,7 +335,7 @@ m3e-icon-button {
   padding: 4px 10px 12px 2px;
   border-radius: 0;
   background: transparent;
-  border-bottom: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant, #cac4d0) 44%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--app-outline) 44%, transparent);
 }
 
 .sidebar-brand img {
@@ -777,14 +735,14 @@ main {
 .hello-disclosure > summary { min-height: 64px; }
 .hello-disclosure > summary .settings-disclosure-chevron { --m3e-icon-size: 24px; }
 .hello-disclosure > summary .settings-disclosure-chevron { --m3e-icon-size: 20px; }
-.settings-disclosure-content { display: grid; gap: 12px; border-top: 1px solid var(--md-sys-color-outline-variant, var(--app-outline)); padding: 16px 4px 4px; }
+.settings-disclosure-content { display: grid; gap: 12px; border-top: 1px solid var(--app-outline); padding: 16px 4px 4px; }
 .settings-entry { width: 100%; min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; padding: 0 4px; color: inherit; background: transparent; text-align: left; font: inherit; cursor: pointer; }
 .settings-entry > span { min-width: 0; display: grid; gap: 4px; }
 .settings-entry strong { font-size: 1.15rem; }
 .settings-entry small { color: var(--md-sys-color-on-surface-variant, var(--app-muted)); }
 .settings-entry m3e-icon { --m3e-icon-size: 20px; }
 .settings-modal { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgb(0 0 0 / 48%); }
-.settings-modal-panel { width: min(520px, 100%); max-height: calc(100vh - 32px); overflow: auto; border: 1px solid var(--md-sys-color-outline-variant, var(--app-outline)); border-radius: 16px; color: var(--md-sys-color-on-surface, var(--app-text)); background: var(--md-sys-color-surface-container, var(--app-surface)); box-shadow: 0 24px 48px rgb(0 0 0 / 32%); }
+.settings-modal-panel { width: min(520px, 100%); max-height: calc(100vh - 32px); overflow: auto; border: 1px solid var(--app-outline); border-radius: var(--app-shape-dialog); color: var(--md-sys-color-on-surface, var(--app-text)); background: var(--md-sys-color-surface-container, var(--app-surface)); box-shadow: 0 24px 48px rgb(0 0 0 / 32%); }
 .settings-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 20px 12px; }
 .settings-modal-header h2, .settings-modal-header p { margin: 0; }
 .settings-modal-header p { margin-top: 4px; color: var(--md-sys-color-on-surface-variant, var(--app-muted)); }
@@ -893,7 +851,7 @@ main {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
+  border: 1px solid var(--app-outline);
   border-radius: 18px;
   padding: 0 13px;
   color: var(--md-sys-color-on-surface, var(--app-text));
@@ -924,8 +882,8 @@ main {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--md-sys-color-outline-variant, var(--app-outline));
-  border-radius: 16px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-dialog);
   background: var(--md-sys-color-surface-container, var(--app-surface));
   color: var(--md-sys-color-on-surface, var(--app-text));
   box-shadow: 0 18px 48px rgb(0 0 0 / 28%);
@@ -933,7 +891,7 @@ main {
 
 .filter-dialog > header,
 .filter-dialog > footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; }
-.filter-dialog > header { border-bottom: 1px solid var(--md-sys-color-outline-variant, var(--app-outline)); }
+.filter-dialog > header { border-bottom: 1px solid var(--app-outline); }
 .filter-dialog > header h2 { margin: 0; font-size: 1.25rem; }
 .filter-dialog > header p { margin: 4px 0 0; color: var(--md-sys-color-on-surface-variant, var(--app-muted)); font-size: .85rem; }
 .filter-dialog-body { display: grid; gap: 10px; padding: 18px 20px; overflow-y: auto; }
@@ -954,7 +912,7 @@ main {
   white-space: nowrap;
 }
 .filter-dialog-body .filter-caption:not(:first-child) { margin-top: 10px; }
-.filter-dialog > footer { justify-content: flex-end; border-top: 1px solid var(--md-sys-color-outline-variant, var(--app-outline)); }
+.filter-dialog > footer { justify-content: flex-end; border-top: 1px solid var(--app-outline); }
 
 .folder-filter {
   min-height: 40px;
@@ -962,7 +920,7 @@ main {
   align-items: center;
   gap: 6px;
   border: 1px solid var(--md-sys-color-outline, var(--app-outline));
-  border-radius: 8px;
+  border-radius: var(--app-shape-field);
   padding: 0 10px;
   color: var(--md-sys-color-on-surface-variant, var(--app-muted));
   background: var(--md-sys-color-surface-container-low, var(--app-surface));
@@ -1052,23 +1010,23 @@ tbody tr:hover {
 
 tbody td {
   background: color-mix(in srgb, var(--md-sys-color-surface-container-lowest, var(--app-bg)) 84%, var(--app-surface));
-  border-block: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant, #cac4d0) 36%, transparent);
+  border-block: 1px solid var(--app-hairline);
 }
 
 tbody td:first-child {
-  border-inline-start: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant, #cac4d0) 36%, transparent);
+  border-inline-start: 1px solid var(--app-hairline);
   border-start-start-radius: var(--app-shape-card);
   border-end-start-radius: var(--app-shape-card);
 }
 
 tbody td:last-child {
-  border-inline-end: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant, #cac4d0) 36%, transparent);
+  border-inline-end: 1px solid var(--app-hairline);
   border-start-end-radius: var(--app-shape-card);
   border-end-end-radius: var(--app-shape-card);
 }
 
 tbody tr:hover td {
-  background: color-mix(in srgb, var(--md-sys-color-secondary-container, var(--app-selected)) 36%, var(--md-sys-color-surface-container-lowest, var(--app-bg)));
+  background: color-mix(in srgb, var(--app-selected) 36%, var(--app-surface));
   box-shadow: 0 1px 2px color-mix(in srgb, var(--md-sys-color-shadow, #000) 12%, transparent);
 }
 
@@ -1107,7 +1065,7 @@ tbody tr:hover td {
 /* 可点击的列表卡片同理：悬停只换整块背景色，不给边框上色。 */
 .item-card.row-clickable:hover {
   border-color: color-mix(in srgb, var(--app-muted) 22%, transparent);
-  background: color-mix(in srgb, var(--md-sys-color-secondary-container, var(--app-selected)) 60%, var(--md-sys-color-surface-container-lowest, var(--app-bg)));
+  background: var(--app-hover-surface);
   transform: none;
 }
 
@@ -1235,7 +1193,7 @@ tr.row-clickable:focus-within td {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border-radius: 999px;
+  border-radius: var(--app-shape-pill);
   padding: 5px 10px;
   color: var(--md-sys-color-on-primary-container, var(--app-text));
   background: var(--md-sys-color-primary-container, var(--app-selected));
@@ -1403,7 +1361,7 @@ tr.row-clickable:focus-within td {
   position: relative;
   width: 24px;
   height: 24px;
-  border-radius: 12px;
+  border-radius: var(--app-shape-card);
   background: var(--swatch);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-text) 16%, transparent);
 }
@@ -1656,7 +1614,7 @@ tr.row-clickable:focus-within td {
     justify-content: flex-end;
     gap: 8px;
     padding-block: 4px;
-    border-top: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant, #cac4d0) 36%, transparent);
+    border-top: 1px solid var(--app-hairline);
   }
 
   .data-card .action-cell::before {
@@ -1791,7 +1749,7 @@ tr.row-clickable:focus-within td {
     justify-content: flex-end;
     gap: 8px;
     padding-block: 4px;
-    border-top: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant, #cac4d0) 36%, transparent);
+    border-top: 1px solid var(--app-hairline);
   }
 
   .data-card .action-cell::before {
@@ -1927,7 +1885,7 @@ tr.row-clickable:focus-within td {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant, #cac4d0) 36%, transparent);
+  border: 1px solid var(--app-hairline);
   border-radius: var(--app-shape-card);
   overflow: hidden;
   background: color-mix(in srgb, var(--md-sys-color-surface-container-lowest, var(--app-bg)) 84%, var(--app-surface));
@@ -1938,7 +1896,7 @@ tr.row-clickable:focus-within td {
    原来的 28% 淡到看不出，可见的高亮全靠行内那个按钮，所以整行要加到看得见的程度。 */
 .login-data-card .credential-table tbody tr:hover {
   transform: none;
-  background: color-mix(in srgb, var(--md-sys-color-secondary-container, var(--app-selected)) 60%, var(--md-sys-color-surface-container-lowest, var(--app-bg)));
+  background: var(--app-hover-surface);
 }
 
 .login-data-card .credential-table tbody td,
