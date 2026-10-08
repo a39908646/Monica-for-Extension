@@ -845,6 +845,26 @@ describe("Bitwarden provider", () => {
     ]);
   });
 
+  it("purges a remote-mirror tombstone without a conflict when the server removes the trashed Cipher", async () => {
+    let ciphers: Record<string, unknown>[] = [{ ...(await loginCipher("telegram", OLD_REVISION)), DeletedDate: "2026-07-15T06:00:00.000Z" }];
+    const provider = new BitwardenProvider(vi.fn(async () => json({ Profile: { Id: "user" }, Ciphers: ciphers })) as unknown as typeof fetch);
+
+    // 第一轮：远端已进回收站，浏览器保留镜像墓碑（deletedAt 来自远端，本地其实没有任何未同步改动）。
+    const trashed = await provider.sync(account(), { now: "2026-07-15T06:01:00.000Z", localItems: [] });
+    const tombstone = trashed.items.find((item) => item.kind === "login") as LoginItem;
+    expect(tombstone.deletedAt).toBe("2026-07-15T06:00:00.000Z");
+    const syncedRevision = tombstone.providerRefs.find((ref) => ref.providerId === "provider-1")?.revision;
+    expect(tombstone.updatedAt).toBe(syncedRevision);
+
+    // 第二轮：云端把它彻底清出了回收站（/sync 不再返回该 Cipher），只剩一个无关 Cipher 避免空库保护。
+    ciphers = [{ ...(await loginCipher("unrelated", OLD_REVISION)), Id: "cipher-other" }];
+    const purged = await provider.sync(account(), { now: "2026-07-15T07:01:00.000Z", localItems: [tombstone] });
+
+    // 远端删除本身就是本地无改动的结局：不该再报「浏览器中也有未同步修改」冲突，墓碑也应一并清除。
+    expect(purged.conflicts).toEqual([]);
+    expect(purged.items.some((item) => item.id === tombstone.id)).toBe(false);
+  });
+
   it("never issues Bitwarden's permanent delete for a locally trashed item", async () => {
     const remote = await loginCipher("remote-secret", OLD_REVISION);
     const methods: string[] = [];

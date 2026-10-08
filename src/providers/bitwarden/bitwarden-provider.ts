@@ -269,11 +269,14 @@ export class BitwardenProvider implements ProviderAdapter {
               receiptsByMutationId.get(pending.id),
               { mutationId: pending.id, itemId: local.id, operation: "delete", remoteId: providerReference(local, account.id)!.remoteId! }
             );
-          } else {
+          } else if (!local.deletedAt) {
+            // 只有本地还活着且有未同步改动，远端却已不存在，才是真正的分叉需要用户选择。
             conflicts.push({ itemId: local.id, reason: "此项目已在 Bitwarden 删除，但浏览器中也有未同步修改。", local });
           }
+          // 本地墓碑（deletedAt）：远端 Cipher 已彻底消失，说明回收站里的那份也被清掉了，
+          // 双方一致都不要这份资料。不再输出墓碑，存储层合并会清掉本地残留，不报冲突。
         }
-        merged.push(...workingLocals.filter((item) => itemChanged(item, account.id)));
+        merged.push(...workingLocals.filter((item) => itemChanged(item, account.id) && !item.deletedAt));
         continue;
       }
       const changes = workingLocals.filter((item) => {
