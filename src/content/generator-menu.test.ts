@@ -154,6 +154,36 @@ describe("in-field password generator", () => {
     await vi.waitFor(() => expect(iconHosts()).toHaveLength(0));
   });
 
+  it("keeps the generator icon outside the field so site controls stay clickable", async () => {
+    await vi.waitFor(() => expect(iconHosts()).toHaveLength(2));
+    // 字段矩形固定为 left:100 right:400 top:100 bottom:144（见 beforeEach 里的 mock）。
+    // 图标必须整个落在字段外面，否则会盖住站点自己的「显示密码」「下一步」按钮。
+    for (const host of iconHosts()) {
+      const left = Number.parseFloat(host.style.left);
+      const top = Number.parseFloat(host.style.top);
+      expect(left).toBeGreaterThanOrEqual(400);
+      expect(top).toBeGreaterThanOrEqual(100);
+      expect(top + 26).toBeLessThanOrEqual(144);
+    }
+  });
+
+  it("moves the icon when the site already occupies the spot beside the field", async () => {
+    await vi.waitFor(() => expect(iconHosts()).toHaveLength(2));
+    const document = dom.window.document;
+    const blocker = document.createElement("button");
+    document.body.append(blocker);
+    // 只把字段右侧那一列判为被占用，模拟站点自己放在那里的按钮。
+    document.elementsFromPoint = (x: number) => (x > 400 ? [blocker] : []);
+    controller.scan();
+    await vi.waitFor(() => {
+      for (const host of iconHosts()) {
+        // 退到右上角：完全离开字段矩形（right=400 / top=100）。
+        expect(Number.parseFloat(host.style.left) + 26).toBeLessThanOrEqual(400);
+        expect(Number.parseFloat(host.style.top) + 26).toBeLessThanOrEqual(100);
+      }
+    });
+  });
+
   it("opens a panel with a plaintext password and fills both password fields", async () => {
     const panel = await openPanel();
     const output = panel.querySelector("code")!;

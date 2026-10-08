@@ -27,7 +27,8 @@ export const GENERATOR_ICON_ATTRIBUTE = "data-monica-password-generator";
 export const GENERATOR_PANEL_HOST_ID = "monica-password-generator-panel";
 
 const ICON_SIZE = 26;
-const ICON_INSET = 6;
+/** 图标与字段之间的间隙。图标一律放在字段外面，绝不盖住站点自己的按钮。 */
+const ICON_GAP = 6;
 const PANEL_DESIRED_HEIGHT = 420;
 const SETTINGS_KEY = "monica.generator.settings";
 /** 0.1.39 及以前只存了四类数量（兼作总长度），读取时迁移成「长度 + 最少数量」。 */
@@ -60,7 +61,13 @@ export function installPasswordGenerator(rootDocument: Document = document) {
   let scanTimer = 0;
   let observer: MutationObserver | undefined;
 
-  interface IconHandle { host: HTMLElement; dispose: () => void; }
+  interface IconHandle {
+    host: HTMLElement;
+    dispose: () => void;
+    /** 相对字段右边缘 / 上边缘的偏移；只在字段尺寸变化或重新扫描时重算。 */
+    offset?: { dx: number; dy: number };
+    size?: { width: number; height: number };
+  }
 
   interface PanelState {
     host: HTMLElement;
@@ -106,18 +113,67 @@ export function installPasswordGenerator(rootDocument: Document = document) {
     trigger.addEventListener("click", event => { if (event.isTrusted) void openPanel(field); });
     shadow.append(style, trigger);
     rootDocument.documentElement.append(host);
-    icons.set(field, { host, dispose: () => { i18n.dispose(); host.remove(); } });
-    positionIcon(field, host);
+    const handle: IconHandle = { host, dispose: () => { i18n.dispose(); host.remove(); } };
+    icons.set(field, handle);
+    positionIcon(field, handle, true);
   }
 
-  function positionIcon(field: HTMLInputElement, host: HTMLElement): void {
+  /** 落点上是否压着站点自己的可交互元素（排除我们挂的图标与面板）。 */
+  function siteControlAt(x: number, y: number, host: HTMLElement): boolean {
+    const fromPoint = (rootDocument as Document & { elementsFromPoint?: (x: number, y: number) => Element[] }).elementsFromPoint;
+    // JSDOM 没有布局，也就没有命中测试；拿不到就当作空位。
+    if (typeof fromPoint !== "function") return false;
+    for (const node of fromPoint.call(rootDocument, x, y)) {
+      if (node === host || node.hasAttribute(GENERATOR_ICON_ATTRIBUTE) || node.id === GENERATOR_PANEL_HOST_ID) continue;
+      if (node === rootDocument.documentElement || node === rootDocument.body) continue;
+      if (node.closest("button, a[href], input, select, textarea, label, [role='button'], [role='link'], [role='checkbox'], [role='switch'], [tabindex]:not([tabindex='-1'])")) return true;
+      if (node instanceof view.HTMLElement && view.getComputedStyle(node).cursor === "pointer") return true;
+    }
+    return false;
+  }
+
+  function spotIsFree(left: number, top: number, host: HTMLElement): boolean {
+    const middle = top + ICON_SIZE / 2;
+    return !siteControlAt(left + 2, middle, host)
+      && !siteControlAt(left + ICON_SIZE - 2, middle, host)
+      && !siteControlAt(left + ICON_SIZE / 2, top + 2, host)
+      && !siteControlAt(left + ICON_SIZE / 2, top + ICON_SIZE - 2, host);
+  }
+
+  /**
+   * 站点经常把「显示密码」「下一步」这类按钮放在字段内部右侧，所以图标不再画在字段里：
+   * 候选落点依次是字段右侧、右上、右下，逐个做命中测试，落点上压着站点控件就换下一个。
+   * 右上/右下会对齐到字段右边缘，并夹进视口 —— 字段铺满整个宽度时靠这个才能留在屏幕上。
+   */
+  function chooseIconOffset(rect: { right: number; top: number; bottom: number; height: number }, host: HTMLElement): { dx: number; dy: number } {
+    const maxLeft = Math.max(2, view.innerWidth - ICON_SIZE - 2);
+    const maxTop = Math.max(2, view.innerHeight - ICON_SIZE - 2);
+    const anchoredLeft = Math.max(2, Math.min(rect.right - ICON_SIZE, maxLeft));
+    const candidates = [
+      { left: rect.right + ICON_GAP, top: Math.round(rect.top + (rect.height - ICON_SIZE) / 2) },
+      { left: anchoredLeft, top: Math.round(rect.top - ICON_SIZE - 4) },
+      { left: anchoredLeft, top: Math.round(rect.bottom + 4) }
+    ];
+    const fits = ({ left, top }: { left: number; top: number }) => left >= 2 && top >= 2 && left <= maxLeft && top <= maxTop;
+    const chosen = candidates.find((candidate) => fits(candidate) && spotIsFree(candidate.left, candidate.top, host))
+      ?? candidates.find(fits)
+      // 视口小到三个落点都放不下时的兼底：留在字段上边缘、至少不跑到屏幕外。
+      ?? { left: anchoredLeft, top: Math.max(2, Math.min(Math.round(rect.top), maxTop)) };
+    return { dx: chosen.left - rect.right, dy: chosen.top - rect.top };
+  }
+
+  function positionIcon(field: HTMLInputElement, handle: IconHandle, force = false): void {
     const rect = field.getBoundingClientRect();
     const onScreen = field.isConnected && rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < view.innerHeight;
-    setImportant(host, "visibility", onScreen ? "visible" : "hidden");
+    setImportant(handle.host, "visibility", onScreen ? "visible" : "hidden");
     if (!onScreen) return;
-    const left = Math.round(Math.max(0, Math.min(rect.right - ICON_SIZE - ICON_INSET, view.innerWidth - ICON_SIZE - 2)));
-    const styles = { left: `${left}px`, top: `${Math.round(rect.top + (rect.height - ICON_SIZE) / 2)}px` };
-    for (const [property, value] of Object.entries(styles)) setImportant(host, property, value);
+    // 滚动时字段尺寸不变，直接复用上次算好的偏移，不再做命中测试。
+    if (force || !handle.offset || handle.size?.width !== rect.width || handle.size?.height !== rect.height) {
+      handle.size = { width: rect.width, height: rect.height };
+      handle.offset = chooseIconOffset(rect, handle.host);
+    }
+    setImportant(handle.host, "left", `${Math.round(rect.right + handle.offset.dx)}px`);
+    setImportant(handle.host, "top", `${Math.round(rect.top + handle.offset.dy)}px`);
   }
 
   function positionPanel(): void {
@@ -144,7 +200,7 @@ export function installPasswordGenerator(rootDocument: Document = document) {
     if (frame || disposed) return;
     frame = view.requestAnimationFrame(() => {
       frame = 0;
-      for (const [field, handle] of icons) positionIcon(field, handle.host);
+      for (const [field, handle] of icons) positionIcon(field, handle);
       positionPanel();
     });
   }
@@ -169,6 +225,8 @@ export function installPasswordGenerator(rootDocument: Document = document) {
     for (const scope of generatorScopes(rootDocument)) {
       for (const field of generatorPasswordFields(scope, rootDocument)) attachIcon(field);
     }
+    // 站点可能刚插入/移除了字段里的按钮，重新做一次落点判定。
+    for (const [field, handle] of icons) positionIcon(field, handle, true);
   }
 
   function scheduleScan(delay = 0): void {
