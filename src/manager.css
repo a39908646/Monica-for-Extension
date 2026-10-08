@@ -456,10 +456,7 @@ button.row-title {
   border-radius: var(--app-shape-card);
 }
 
-button.row-title:hover {
-  background: color-mix(in srgb, var(--app-selected) 45%, transparent);
-}
-
+/* 悬停高亮交给整行 tr，名称按钮自己不再单独变色（否则只有 item-cell 里那一块亮）。 */
 button.row-title:focus-visible {
   outline: none;
   box-shadow: var(--app-focus-shadow);

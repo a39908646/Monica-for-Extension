@@ -1104,6 +1104,13 @@ tbody tr:hover td {
   transform: translateY(-1px);
 }
 
+/* 可点击的列表卡片同理：悬停只换整块背景色，不给边框上色。 */
+.item-card.row-clickable:hover {
+  border-color: color-mix(in srgb, var(--app-muted) 22%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-secondary-container, var(--app-selected)) 60%, var(--md-sys-color-surface-container-lowest, var(--app-bg)));
+  transform: none;
+}
+
 .item-card-main {
   display: flex;
   align-items: center;
@@ -1927,10 +1934,11 @@ tr.row-clickable:focus-within td {
   transition: background var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease);
 }
 
+/* 悬停只换整行背景色：不给边框上色，行内任何一块也不再单独变色。
+   原来的 28% 淡到看不出，可见的高亮全靠行内那个按钮，所以整行要加到看得见的程度。 */
 .login-data-card .credential-table tbody tr:hover {
   transform: none;
-  border-color: color-mix(in srgb, var(--md-sys-color-primary, var(--app-primary)) 42%, transparent);
-  background: color-mix(in srgb, var(--md-sys-color-secondary-container, var(--app-selected)) 28%, var(--md-sys-color-surface-container-lowest, var(--app-bg)));
+  background: color-mix(in srgb, var(--md-sys-color-secondary-container, var(--app-selected)) 60%, var(--md-sys-color-surface-container-lowest, var(--app-bg)));
 }
 
 .login-data-card .credential-table tbody td,
