@@ -34,18 +34,16 @@ export const GENERATOR_STYLES = `${PROMPT_BASE_STYLES}
   .modes { display: flex; flex-wrap: wrap; gap: 6px; }
   .modes button { min-height: 40px; padding: 8px 14px; border: 1px solid var(--monica-outline); border-radius: 999px; background: transparent; font: inherit; font-size: 0.875rem; }
   .modes button[aria-pressed="true"] { color: var(--monica-on-primary); background: var(--monica-primary); border-color: transparent; }
-  .options { display: grid; gap: 12px; }
-  .options-group { min-width: 0; margin: 0; padding: 10px 12px; display: grid; gap: 8px; border: 1px solid var(--monica-outline); border-radius: 10px; }
-  .options-group legend { padding: 0 6px; font-weight: 600; font-size: 0.8125rem; }
-  .check-row { display: flex; align-items: center; gap: 8px; min-height: 32px; }
-  .check-row input[type="checkbox"] { width: 18px; height: 18px; margin: 0; }
-  .field-row { display: grid; gap: 6px; }
-  .field-row > span { color: var(--monica-muted); font-size: 0.8125rem; }
-  .field-row input[type="text"], .field-row input[type="number"] { min-height: 40px; border: 1px solid var(--monica-outline); border-radius: 8px; padding: 0 10px; color: var(--monica-text); background: var(--monica-surface); font: inherit; }
-  .field-row input[type="range"] { width: 100%; accent-color: var(--monica-primary); }
-  .symbol-grid { display: flex; flex-wrap: wrap; gap: 4px; }
-  .symbol-chip { display: inline-flex; align-items: center; gap: 2px; min-height: 30px; padding: 0 6px; border-radius: 6px; background: var(--monica-surface-container); font: 500 0.9375rem/1 ui-monospace, monospace; cursor: pointer; }
-  .symbol-chip input { width: 14px; height: 14px; margin: 0; }
+  .count-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+  .count-row.single { grid-template-columns: minmax(0, 1fr); }
+  .count-group { display: grid; gap: 6px; }
+  .count-group.is-hidden { display: none; }
+  .count-caption { color: var(--monica-muted); font-size: 0.8125rem; }
+  .count-field { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; min-height: 44px; padding: 0 10px; border: 1px solid var(--monica-outline); border-radius: 8px; background: var(--monica-surface); }
+  .count-field:focus-within { border-color: var(--monica-primary); }
+  .count-field > span { color: var(--monica-muted); font-size: 0.875rem; }
+  .count-field input { width: 100%; min-height: 40px; border: 0; padding: 0; color: var(--monica-text); background: transparent; font: inherit; font-size: 1rem; text-align: end; }
+  .count-field input:focus-visible { outline: 2px solid var(--monica-primary); outline-offset: 2px; }
   .actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .actions button { flex: 1 1 7rem; min-height: 44px; font-size: 0.9375rem; }
   .actions .secondary { border: 1px solid var(--monica-outline); }

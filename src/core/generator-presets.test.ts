@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_GENERATOR_PREFERENCES, resolveAllowedSymbols } from "./generator-preferences";
-import { fieldGeneratorLength, fieldGeneratorMode, generateFromPreferences, withFieldGeneratorLength } from "./generator-presets";
+import {
+  applyFieldGeneratorLength,
+  applyFieldGeneratorMinimum,
+  DEFAULT_FIELD_GENERATOR_SETTINGS,
+  fieldGeneratorMode,
+  fieldGeneratorLength,
+  fieldGeneratorSettingsFromCounts,
+  generateFromFieldSettings,
+  generateFromPreferences,
+  normalizeFieldGeneratorSettings,
+  withFieldGeneratorLength,
+  type FieldGeneratorSettings
+} from "./generator-presets";
 
 const preferences = (patch: Partial<typeof DEFAULT_GENERATOR_PREFERENCES> = {}) => ({ ...DEFAULT_GENERATOR_PREFERENCES, ...patch });
 
@@ -43,5 +55,80 @@ describe("shared generator presets", () => {
     expect(withFieldGeneratorLength(start, "PASSWORD", 999).passwordLength).toBe(128);
     expect(fieldGeneratorLength(start, "SYMBOL")).toBe(start.symbolLength);
     expect(fieldGeneratorLength(start, "PASSPHRASE")).toBe(start.passphraseWordCount);
+  });
+});
+
+const settings = (patch: Partial<FieldGeneratorSettings> = {}): FieldGeneratorSettings => ({
+  ...DEFAULT_FIELD_GENERATOR_SETTINGS,
+  ...patch,
+  lengths: { ...DEFAULT_FIELD_GENERATOR_SETTINGS.lengths, ...patch.lengths },
+  minimums: { ...DEFAULT_FIELD_GENERATOR_SETTINGS.minimums, ...patch.minimums }
+});
+
+describe("field generator settings", () => {
+  it("uses the length for the total and the minimums only as a lower bound", () => {
+    const value = generateFromFieldSettings(settings({ lengths: { ...DEFAULT_FIELD_GENERATOR_SETTINGS.lengths, SYMBOL: 24 } }), "SYMBOL");
+    expect(value).toHaveLength(24);
+    // 构成不固定：每类下限只有 1 个，大写个数不应该总是 1。
+    const counts = Array.from({ length: 10 }, () => [...generateFromFieldSettings(settings(), "SYMBOL")].filter((character) => /[A-Z]/.test(character)).length);
+    expect(Math.max(...counts)).toBeGreaterThan(1);
+  });
+
+  it("treats a minimum of 0 as excluding that character type", () => {
+    const value = generateFromFieldSettings(settings({ minimums: { uppercase: 0, lowercase: 0, digits: 0, symbols: 1 } }), "SYMBOL");
+    expect(value).toHaveLength(DEFAULT_FIELD_GENERATOR_SETTINGS.lengths.SYMBOL);
+    expect(value).toMatch(/^[^A-Za-z0-9]+$/);
+  });
+
+  it("generates pins, passphrases and word passwords from the same settings", () => {
+    expect(generateFromFieldSettings(settings({ lengths: { ...DEFAULT_FIELD_GENERATOR_SETTINGS.lengths, PIN: 8 } }), "PIN")).toMatch(/^[0-9]{8}$/);
+    expect(generateFromFieldSettings(settings({ lengths: { ...DEFAULT_FIELD_GENERATOR_SETTINGS.lengths, PASSPHRASE: 5 } }), "PASSPHRASE").split("-")).toHaveLength(5);
+    const wordPassword = generateFromFieldSettings(settings({ lengths: { ...DEFAULT_FIELD_GENERATOR_SETTINGS.lengths, PASSWORD: 16 } }), "PASSWORD");
+    expect(wordPassword).toMatch(/^[a-z0-9]{16}$/);
+  });
+
+  it("normalizes stored settings, including the all-zero fallback", () => {
+    expect(normalizeFieldGeneratorSettings(undefined)).toEqual(DEFAULT_FIELD_GENERATOR_SETTINGS);
+    expect(normalizeFieldGeneratorSettings({ lengths: { SYMBOL: 999, PIN: 0 }, minimums: { uppercase: 99, lowercase: -3 } })).toEqual({
+      lengths: { ...DEFAULT_FIELD_GENERATOR_SETTINGS.lengths, SYMBOL: 64, PIN: 4 },
+      minimums: { uppercase: 32, lowercase: 0, digits: 1, symbols: 1 }
+    });
+    // 四类全为 0 时没有可用字符，退回默认最少数量。
+    expect(normalizeFieldGeneratorSettings({ minimums: { uppercase: 0, lowercase: 0, digits: 0, symbols: 0 } }).minimums)
+      .toEqual(DEFAULT_FIELD_GENERATOR_SETTINGS.minimums);
+    // 长度不能小于最少数量之和。
+    expect(normalizeFieldGeneratorSettings({ lengths: { SYMBOL: 4 }, minimums: { uppercase: 5, lowercase: 5, digits: 5, symbols: 5 } }).lengths.SYMBOL).toBe(20);
+  });
+
+  it("migrates the legacy per-type counts into a length plus minimums", () => {
+    expect(fieldGeneratorSettingsFromCounts({ uppercase: 2, lowercase: 10, digits: 4, symbols: 3 })).toEqual({
+      lengths: { ...DEFAULT_FIELD_GENERATOR_SETTINGS.lengths, SYMBOL: 20 },
+      minimums: { uppercase: 2, lowercase: 10, digits: 4, symbols: 3 }
+    });
+    // 旧数量合计超过默认长度时抬高长度。
+    expect(fieldGeneratorSettingsFromCounts({ uppercase: 20, lowercase: 20, digits: 0, symbols: 0 })?.lengths.SYMBOL).toBe(40);
+    expect(fieldGeneratorSettingsFromCounts(undefined)).toBeUndefined();
+    expect(fieldGeneratorSettingsFromCounts({ selectedGenerator: "PIN" })).toBeUndefined();
+  });
+
+  it("keeps the length above the minimums and the minimums inside the length", () => {
+    const start = settings();
+    expect(applyFieldGeneratorLength(start, "SYMBOL", 999).lengths.SYMBOL).toBe(64);
+    expect(applyFieldGeneratorLength(start, "SYMBOL", 2).lengths.SYMBOL).toBe(4);
+    expect(applyFieldGeneratorLength(start, "PIN", 999).lengths.PIN).toBe(32);
+    expect(applyFieldGeneratorLength(start, "PASSPHRASE", 1).lengths.PASSPHRASE).toBe(2);
+    // 其他模式的长度不受影响。
+    expect(applyFieldGeneratorLength(start, "PIN", 10).lengths.SYMBOL).toBe(start.lengths.SYMBOL);
+
+    const raised = applyFieldGeneratorMinimum(start, "uppercase", 32);
+    expect(raised.minimums.uppercase).toBe(32);
+    expect(raised.lengths.SYMBOL).toBe(35);
+    // 合计不得超出符号密码的长度上限：剩下三类已占 3，大写最多只能到 61。
+    expect(applyFieldGeneratorMinimum(settings({ minimums: { uppercase: 32, lowercase: 32, digits: 0, symbols: 0 } }), "uppercase", 40).minimums.uppercase).toBe(32);
+  });
+
+  it("refuses to disable every character type", () => {
+    const almost = settings({ minimums: { uppercase: 0, lowercase: 0, digits: 0, symbols: 3 } });
+    expect(applyFieldGeneratorMinimum(almost, "symbols", 0)).toBe(almost);
   });
 });

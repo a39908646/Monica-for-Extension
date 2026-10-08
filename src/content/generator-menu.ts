@@ -1,6 +1,17 @@
 import { passwordStrengthBits } from "../core/credential-generator";
-import { generatePassphrase, generatePassword, generatePin } from "../core/credential-generator";
-import { countsToPasswordConfig, DEFAULT_GENERATOR_COUNTS, type GeneratorCounts, type FieldGeneratorMode } from "../core/generator-presets";
+import {
+  applyFieldGeneratorLength,
+  applyFieldGeneratorMinimum,
+  DEFAULT_FIELD_GENERATOR_SETTINGS,
+  FIELD_GENERATOR_LENGTH_RANGE,
+  fieldGeneratorSettingsFromCounts,
+  generateFromFieldSettings,
+  isFieldGeneratorMode,
+  normalizeFieldGeneratorSettings,
+  type FieldGeneratorMode,
+  type FieldGeneratorSettings,
+  type GeneratorMinimums
+} from "../core/generator-presets";
 import { getUiLocale, initializeUiLocale, tr } from "../i18n/runtime";
 import { setNativeValue } from "./dom";
 import { generatorMirrorFields, generatorPasswordFields, generatorScopes } from "./generator-fields";
@@ -18,15 +29,19 @@ export const GENERATOR_PANEL_HOST_ID = "monica-password-generator-panel";
 const ICON_SIZE = 26;
 const ICON_INSET = 6;
 const PANEL_DESIRED_HEIGHT = 420;
-const COUNTS_KEY = "monica.generator.counts";
+const SETTINGS_KEY = "monica.generator.settings";
+/** 0.1.39 及以前只存了四类数量（兼作总长度），读取时迁移成「长度 + 最少数量」。 */
+const LEGACY_COUNTS_KEY = "monica.generator.counts";
 const MODE_KEY = "monica.generator.mode";
 const MODE_LABELS: Record<FieldGeneratorMode, string> = { SYMBOL: "密码", PASSWORD: "单词", PIN: "PIN", PASSPHRASE: "短语" };
+/** 长度框的标签随模式变化：符号密码/单词密码是字符数，PIN 是位数，短语是单词数。 */
+const MODE_LENGTH_LABELS: Record<FieldGeneratorMode, string> = { SYMBOL: "长度", PASSWORD: "单词密码长度", PIN: "PIN 长度", PASSPHRASE: "单词数" };
 const MODE_ORDER: FieldGeneratorMode[] = ["SYMBOL", "PASSWORD", "PIN", "PASSPHRASE"];
-const COUNT_LABELS: Array<{ key: keyof GeneratorCounts; label: string }> = [
-  { key: "uppercase", label: "大写" },
-  { key: "lowercase", label: "小写" },
-  { ...({ key: "digits" as keyof GeneratorCounts, label: "数字" }) },
-  { key: "symbols", label: "符号" }
+const MINIMUM_LABELS: Array<{ key: keyof GeneratorMinimums; label: string; ariaLabel: string }> = [
+  { key: "uppercase", label: "大写", ariaLabel: "大写最少数量" },
+  { key: "lowercase", label: "小写", ariaLabel: "小写最少数量" },
+  { key: "digits", label: "数字", ariaLabel: "数字最少数量" },
+  { key: "symbols", label: "符号", ariaLabel: "符号最少数量" }
 ];
 
 /**
@@ -38,7 +53,7 @@ export function installPasswordGenerator(rootDocument: Document = document) {
   const icons = new Map<HTMLInputElement, IconHandle>();
   let disposed = false;
   let enabled = false;
-  let counts: GeneratorCounts = { ...DEFAULT_GENERATOR_COUNTS };
+  let settings: FieldGeneratorSettings = normalizeFieldGeneratorSettings(DEFAULT_FIELD_GENERATOR_SETTINGS);
   let mode: FieldGeneratorMode = "SYMBOL";
   let panel: PanelState | undefined;
   let frame = 0;
@@ -56,11 +71,9 @@ export function installPasswordGenerator(rootDocument: Document = document) {
     output: HTMLElement;
     entropy: HTMLElement;
     status: HTMLElement;
-    options: HTMLElement;
-    modeLabel: HTMLElement;
     cleanups: Array<() => void>;
-    controlSyncs: Array<() => void>;
-    refresh: () => void;
+    /** 面板控件回填：skip 用来跳过用户正在编辑的那个输入框，避免光标被重置。 */
+    controlSyncs: Array<(skip?: Element) => void>;
   }
 
   function setImportant(node: HTMLElement, property: string, value: string): void {
@@ -163,11 +176,29 @@ export function installPasswordGenerator(rootDocument: Document = document) {
     scanTimer = view.setTimeout(() => { scanTimer = 0; if (rootDocument.visibilityState !== "hidden") scan(); }, delay);
   }
 
-  /** 任何数量改动都走这里：夹紧、保存、重新生成，并同步面板控件。 */
-  function commitCount(key: keyof GeneratorCounts, value: number): void {
-    counts = { ...counts, [key]: Math.max(0, Math.min(32, Math.round(value) || 0)) };
-    persistCounts();
-    if (panel) { panel.value = generate(); renderResult(); for (const sync of panel.controlSyncs) sync(); }
+  /** 任何长度或最少数量改动都走这里：夹紧、保存、重新生成，并同步面板控件。 */
+  function applySettings(next: FieldGeneratorSettings, skip?: Element): void {
+    settings = next;
+    persistSettings();
+    if (!panel) return;
+    panel.value = generate();
+    renderResult();
+    for (const sync of panel.controlSyncs) sync(skip);
+  }
+
+  function commitLength(value: number, skip?: Element): void {
+    applySettings(applyFieldGeneratorLength(settings, mode, value), skip);
+  }
+
+  function commitMinimum(key: keyof GeneratorMinimums, value: number, skip?: Element): void {
+    const next = applyFieldGeneratorMinimum(settings, key, value);
+    // 全为 0 时没有任何可用字符：保留原值并提示，否则生成器会直接报错。
+    if (next === settings) {
+      setStatus(tr('至少保留一种字符类型。'), "error");
+      if (panel) for (const sync of panel.controlSyncs) sync(skip);
+      return;
+    }
+    applySettings(next, skip);
   }
 
   function setMode(next: FieldGeneratorMode): void {
@@ -176,8 +207,8 @@ export function installPasswordGenerator(rootDocument: Document = document) {
     if (panel) { panel.value = generate(); renderResult(); for (const sync of panel.controlSyncs) sync(); }
   }
 
-  function persistCounts(): void {
-    void chrome.storage.local.set({ [COUNTS_KEY]: counts }).catch(() => undefined);
+  function persistSettings(): void {
+    void chrome.storage.local.set({ [SETTINGS_KEY]: settings }).catch(() => undefined);
   }
 
   function persistMode(): void {
@@ -185,13 +216,7 @@ export function installPasswordGenerator(rootDocument: Document = document) {
   }
 
   function generate(): string {
-    if (mode === "PIN") return generatePin(counts.digits || 6);
-    if (mode === "PASSPHRASE") return generatePassphrase({ length: counts.lowercase || 4, delimiter: "-" });
-    return generatePassword(countsToPasswordConfig(counts));
-  }
-
-  function totalLength(): number {
-    return counts.uppercase + counts.lowercase + counts.digits + counts.symbols;
+    return generateFromFieldSettings(settings, mode);
   }
 
   function renderResult(): void {
@@ -200,7 +225,6 @@ export function installPasswordGenerator(rootDocument: Document = document) {
     // 结果始终明文：用户必须核对生成的密码是否符合偏好。
     current.output.textContent = current.value;
     current.i18n.text(current.entropy, () => tr('约 {0} bit', { 0: passwordStrengthBits(current.value) }));
-    current.i18n.text(current.modeLabel, () => tr('长度：{0}', { 0: totalLength() }));
   }
 
   function copyResult(): void {
@@ -284,22 +308,40 @@ export function installPasswordGenerator(rootDocument: Document = document) {
       modeBar.append(button);
     }
 
-    const countRow = element("div", "count-row");
-    const countInputs: Array<{ key: keyof GeneratorCounts; input: HTMLInputElement }> = [];
-    for (const { key, label } of COUNT_LABELS) {
-      const label_el = element("span", "count-label");
-      i18n.text(label_el, () => tr(label));
+    // 长度框：总位数由它决定，标签和范围随模式变化（PIN 是位数，短语是单词数）。
+    const lengthRow = element("div", "count-row single");
+    const lengthField = element("label", "count-field");
+    const lengthCaption = element("span", "");
+    const lengthInput = rootDocument.createElement("input");
+    lengthInput.type = "number";
+    lengthInput.step = "1";
+    lengthInput.inputMode = "numeric";
+    lengthField.append(lengthCaption, lengthInput);
+    lengthRow.append(lengthField);
+
+    // 最少数量：只对「密码」模式生效，0 表示完全不使用该类型，其余位数随机填充。
+    const minimumGroup = element("div", "count-group");
+    const minimumCaption = element("span", "count-caption");
+    i18n.text(minimumCaption, () => tr('最少数量'));
+    const minimumRow = element("div", "count-row");
+    const minimumInputs: Array<{ key: keyof GeneratorMinimums; input: HTMLInputElement }> = [];
+    for (const { key, label, ariaLabel } of MINIMUM_LABELS) {
+      const minimumField = element("label", "count-field");
+      const caption = element("span", "");
+      i18n.text(caption, () => tr(label));
       const input = rootDocument.createElement("input");
       input.type = "number";
       input.min = "0";
-      input.max = "32";
-      input.value = String(counts[key]);
-      input.setAttribute("data-count", key);
-      countInputs.push({ key, input });
-      countRow.append(label_el, input);
+      input.max = String(FIELD_GENERATOR_LENGTH_RANGE.SYMBOL.maximum);
+      input.step = "1";
+      input.inputMode = "numeric";
+      input.setAttribute("data-minimum", key);
+      i18n.attribute(input, "aria-label", () => tr(ariaLabel));
+      minimumField.append(caption, input);
+      minimumInputs.push({ key, input });
+      minimumRow.append(minimumField);
     }
-    const modeLabel = element("span", "mode-length");
-    i18n.text(modeLabel, () => tr('长度：{0}', { 0: totalLength() }));
+    minimumGroup.append(minimumCaption, minimumRow);
 
     const actions = element("footer", "actions");
     const regenerateButton = element("button", "secondary") as HTMLButtonElement;
@@ -317,21 +359,17 @@ export function installPasswordGenerator(rootDocument: Document = document) {
     const status = element("p", "status");
     status.setAttribute("role", "status");
 
-    surface.append(head, result, modeBar, countRow, actions, status);
+    surface.append(head, result, modeBar, lengthRow, minimumGroup, actions, status);
     shadow.append(style, surface);
     rootDocument.documentElement.append(host);
 
     const cleanups: Array<() => void> = [() => i18n.dispose(), () => host.remove()];
-    const controlSyncs: Array<() => void> = [];
+    const controlSyncs: Array<(skip?: Element) => void> = [];
     panel = {
       host, field, scope,
       value: generate(),
-      i18n, output, entropy, status, options: countRow, modeLabel,
-      cleanups, controlSyncs,
-      refresh: () => {
-        for (const sync of controlSyncs) sync();
-        renderResult();
-      }
+      i18n, output, entropy, status,
+      cleanups, controlSyncs
     };
 
     for (const [candidate, button] of modeButtons) {
@@ -339,14 +377,34 @@ export function installPasswordGenerator(rootDocument: Document = document) {
         if (!event.isTrusted || !panel || mode === candidate) return;
         setMode(candidate);
         for (const [entry, control] of modeButtons) control.setAttribute("aria-pressed", String(entry === candidate));
-        renderResult();
       });
     }
 
-    for (const { key, input } of countInputs) {
-      input.addEventListener("change", () => commitCount(key, Number(input.value)));
-      controlSyncs.push(() => { input.value = String(counts[key]); });
-    }
+    // 输入过程中即时重生成（点「填充」前不会失焦，change 可能不触发），但不要回写用户正在编辑的输入框。
+    const bindNumberInput = (input: HTMLInputElement, commit: (value: number, skip?: Element) => void) => {
+      input.addEventListener("input", () => {
+        const parsed = Number(input.value);
+        if (input.value.trim() === "" || !Number.isFinite(parsed)) return;
+        commit(parsed, input);
+      });
+      input.addEventListener("change", () => commit(Number(input.value)));
+    };
+    bindNumberInput(lengthInput, (value, skip) => commitLength(value, skip));
+    for (const { key, input } of minimumInputs) bindNumberInput(input, (value, skip) => commitMinimum(key, value, skip));
+
+    controlSyncs.push((skip?: Element) => {
+      const range = FIELD_GENERATOR_LENGTH_RANGE[mode];
+      // 重新登记一次，模式切换时标签和 aria 名称要立刻跟着换。
+      i18n.text(lengthCaption, () => tr(MODE_LENGTH_LABELS[mode]));
+      i18n.attribute(lengthInput, "aria-label", () => tr(MODE_LENGTH_LABELS[mode]));
+      lengthInput.min = String(range.minimum);
+      lengthInput.max = String(range.maximum);
+      if (lengthInput !== skip) lengthInput.value = String(settings.lengths[mode]);
+      minimumGroup.classList.toggle("is-hidden", mode !== "SYMBOL");
+      for (const { key, input } of minimumInputs) {
+        if (input !== skip) input.value = String(settings.minimums[key]);
+      }
+    });
 
     regenerateButton.addEventListener("click", event => {
       if (!event.isTrusted || !panel) return;
@@ -376,9 +434,14 @@ export function installPasswordGenerator(rootDocument: Document = document) {
       () => rootDocument.removeEventListener("pointerdown", onPointerDown, true)
     );
 
-    // 面板按钮不夺走字段焦点，用户可以继续在页面里打字。
-    surface.addEventListener("pointerdown", event => { if (event.isTrusted && event.button === 0) event.preventDefault(); });
+    // 只有面板按钮需要阻止默认行为来保留页面字段焦点；数字框和结果文本必须保留聚焦、选择与原生步进。
+    surface.addEventListener("pointerdown", event => {
+      if (!event.isTrusted || event.button !== 0) return;
+      const target = event.composedPath()[0];
+      if (target instanceof view.HTMLElement && target.closest("button")) event.preventDefault();
+    });
 
+    for (const sync of controlSyncs) sync();
     renderResult();
     positionPanel();
     fillButton.focus();
@@ -393,9 +456,17 @@ export function installPasswordGenerator(rootDocument: Document = document) {
   function preferenceChanged(changes: Record<string, chrome.storage.StorageChange>, area: string): void {
     if (area !== "local") return;
     if (changes[INLINE_AUTOFILL_ENABLED_KEY]) applyEnabled(inlineAutofillEnabled(changes[INLINE_AUTOFILL_ENABLED_KEY].newValue));
-    if (changes[COUNTS_KEY]?.newValue) counts = { ...DEFAULT_GENERATOR_COUNTS, ...(changes[COUNTS_KEY].newValue as GeneratorCounts) };
-    if (changes[MODE_KEY]?.newValue) mode = changes[MODE_KEY].newValue as FieldGeneratorMode;
-    if (panel) {
+    let regenerated = false;
+    if (changes[SETTINGS_KEY]?.newValue) {
+      const next = normalizeFieldGeneratorSettings(changes[SETTINGS_KEY].newValue);
+      // 面板自己写回的设置也会触发这里：值没变就不要重算，否则会打断正在输入的用户。
+      if (JSON.stringify(next) !== JSON.stringify(settings)) { settings = next; regenerated = true; }
+    }
+    if (isFieldGeneratorMode(changes[MODE_KEY]?.newValue) && changes[MODE_KEY].newValue !== mode) {
+      mode = changes[MODE_KEY].newValue as FieldGeneratorMode;
+      regenerated = true;
+    }
+    if (regenerated && panel) {
       panel.value = generate();
       renderResult();
       for (const sync of panel.controlSyncs) sync();
@@ -418,13 +489,22 @@ export function installPasswordGenerator(rootDocument: Document = document) {
   }
 
   void Promise.all([
-    chrome.storage.local.get([COUNTS_KEY, MODE_KEY]),
+    chrome.storage.local.get([SETTINGS_KEY, LEGACY_COUNTS_KEY, MODE_KEY]),
     readInlineAutofillEnabled(),
     initializeUiLocale()
   ]).then(([stored, inlineEnabled]) => {
     if (disposed) return;
-    if (stored[COUNTS_KEY]) counts = { ...DEFAULT_GENERATOR_COUNTS, ...(stored[COUNTS_KEY] as GeneratorCounts) };
-    if (stored[MODE_KEY]) mode = stored[MODE_KEY] as FieldGeneratorMode;
+    if (stored[SETTINGS_KEY]) {
+      settings = normalizeFieldGeneratorSettings(stored[SETTINGS_KEY]);
+    } else {
+      // 旧版只存了四类数量：迁移成「长度 + 最少数量」并写回，避免每次重新推算。
+      const migrated = fieldGeneratorSettingsFromCounts(stored[LEGACY_COUNTS_KEY]);
+      if (migrated) {
+        settings = migrated;
+        void chrome.storage.local.set({ [SETTINGS_KEY]: migrated }).catch(() => undefined);
+      }
+    }
+    if (isFieldGeneratorMode(stored[MODE_KEY])) mode = stored[MODE_KEY];
     applyEnabled(inlineEnabled);
   }).catch(() => applyEnabled(true));
 

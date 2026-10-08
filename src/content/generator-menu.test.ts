@@ -1,5 +1,6 @@
 import { JSDOM } from "jsdom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_WORD_PASSWORD_WORDS } from "../core/credential-generator";
 import { GENERATOR_ICON_ATTRIBUTE, GENERATOR_PANEL_HOST_ID, installPasswordGenerator } from "./generator-menu";
 
 vi.mock("../i18n/runtime", () => ({
@@ -11,6 +12,7 @@ vi.mock("../i18n/runtime", () => ({
 }));
 
 const COUNTS_KEY = "monica.generator.counts";
+const SETTINGS_KEY = "monica.generator.settings";
 const MODE_KEY = "monica.generator.mode";
 const ENABLED_KEY = "monica.autofill.inline.enabled";
 
@@ -58,6 +60,38 @@ function trustedClick(element: Element): void {
   const eventImpl = (event as unknown as Record<symbol, { isTrusted: boolean }>)[Object.getOwnPropertySymbols(event)[0]];
   eventImpl.isTrusted = true;
   (element as unknown as Record<symbol, { _dispatch: (impl: unknown) => void }>)[implSymbol]._dispatch(eventImpl);
+}
+
+/** 同样的手法伪造受信的 pointerdown，用来断言面板没有阻止输入框的默认行为。 */
+function trustedPointerDown(element: Element): boolean {
+  const implSymbol = Object.getOwnPropertySymbols(element)[0];
+  const event = new dom.window.MouseEvent("pointerdown", { bubbles: true, composed: true, cancelable: true, button: 0 });
+  const eventImpl = (event as unknown as Record<symbol, { isTrusted: boolean }>)[Object.getOwnPropertySymbols(event)[0]];
+  eventImpl.isTrusted = true;
+  (element as unknown as Record<symbol, { _dispatch: (impl: unknown) => void }>)[implSymbol]._dispatch(eventImpl);
+  return event.defaultPrevented;
+}
+
+function lengthInput(panel: ShadowRoot): HTMLInputElement {
+  return panel.querySelector<HTMLInputElement>(".count-row.single input[type='number']")!;
+}
+
+function minimumInput(panel: ShadowRoot, key: string): HTMLInputElement {
+  return panel.querySelector<HTMLInputElement>(`input[data-minimum="${key}"]`)!;
+}
+
+function minimumGroup(panel: ShadowRoot): HTMLElement {
+  return panel.querySelector<HTMLElement>(".count-group")!;
+}
+
+function lengthCaption(panel: ShadowRoot): string {
+  return panel.querySelector(".count-row.single .count-field > span")?.textContent || "";
+}
+
+/** 模拟用户在数字框里输入：默认只派发 input（真实点击「填充」前不会失焦，change 不会触发）。 */
+function typeNumber(input: HTMLInputElement, value: string, kind: "input" | "change" = "input"): void {
+  input.value = value;
+  input.dispatchEvent(new dom.window.Event(kind, { bubbles: true }));
 }
 
 async function openPanel(): Promise<ShadowRoot> {
@@ -124,8 +158,8 @@ describe("in-field password generator", () => {
     const panel = await openPanel();
     const output = panel.querySelector("code")!;
     const first = generatedValue(panel);
-    // 结果始终明文，长度符合 counts 模型（2 大写 + 10 小写 + 4 数字 + 3 符号 = 19）。
-    expect(first).toMatch(/^[A-Za-z0-9!@#$%^&*()_+\-=[\]{}|;:,.<>?]{19}$/);
+    // 结果始终明文；默认总长度 20，最少数量只保证下限。
+    expect(first).toMatch(/^[A-Za-z0-9!@#$%^&*()_+\-=[\]{}|;:,.<>?]{20}$/);
     expect(output.textContent).toBe(first);
 
     trustedClick(buttonByText(panel, "重新生成"));
@@ -146,38 +180,137 @@ describe("in-field password generator", () => {
     expect(dom.window.document.activeElement).toBe(field("password"));
   });
 
-  it("exposes count controls for each character type", async () => {
+  it("exposes a total length control plus per-type minimums", async () => {
     const panel = await openPanel();
-    const options = panel.querySelector(".count-row")!;
-    expect(options.textContent).toContain("大写");
-    expect(options.textContent).toContain("小写");
-    expect(options.textContent).toContain("数字");
-    expect(options.textContent).toContain("符号");
-    // 默认 counts：2 大写 + 10 小写 + 4 数字 + 3 符号
-    const inputs = [...options.querySelectorAll<HTMLInputElement>("input[type='number']")];
+    expect(lengthCaption(panel)).toBe("长度");
+    expect(lengthInput(panel).value).toBe("20");
+    expect(lengthInput(panel).min).toBe("4");
+    expect(lengthInput(panel).max).toBe("64");
+    expect(minimumGroup(panel).textContent).toContain("最少数量");
+    const inputs = [...minimumGroup(panel).querySelectorAll<HTMLInputElement>("input[type='number']")];
     expect(inputs).toHaveLength(4);
-    expect(inputs.map((input) => Number(input.value))).toEqual([2, 10, 4, 3]);
+    // 默认每类至少 1 个，其余位数随机补足。
+    expect(inputs.map((input) => Number(input.value))).toEqual([1, 1, 1, 1]);
+    // 每个数字框都要能被标签、无障碍名称和焦点定位到。
+    expect(inputs.map((input) => input.getAttribute("aria-label"))).toEqual(["大写最少数量", "小写最少数量", "数字最少数量", "符号最少数量"]);
   });
 
-  it("persists count changes and regenerates with the new counts", async () => {
+  it("keeps number inputs interactive and only blocks the panel buttons from stealing field focus", async () => {
+    const panel = await openPanel();
+    // 回归：曾经整块面板都阻止 pointerdown，导致数字框无法聚焦、无法选中、原生步进按钮失效。
+    expect(trustedPointerDown(lengthInput(panel))).toBe(false);
+    expect(trustedPointerDown(minimumInput(panel, "lowercase"))).toBe(false);
+    expect(trustedPointerDown(buttonByText(panel, "填充"))).toBe(true);
+  });
+
+  it("uses the length for the total and keeps the minimums as a lower bound", async () => {
+    const panel = await openPanel();
+    typeNumber(lengthInput(panel), "12");
+    expect(generatedValue(panel)).toHaveLength(12);
+    expect(lengthInput(panel).value).toBe("12");
+
+    // 每类下限只有 1 个：大写个数不应该总是 1（否则说明构成被写死了）。
+    const uppercaseCounts = Array.from({ length: 10 }, () => {
+      trustedClick(buttonByText(panel, "重新生成"));
+      return [...generatedValue(panel)].filter((character) => /[A-Z]/.test(character)).length;
+    });
+    expect(Math.max(...uppercaseCounts)).toBeGreaterThan(1);
+  });
+
+  it("regenerates while typing a length and fills the fresh value without blurring", async () => {
+    const panel = await openPanel();
+    // 只有 input 事件（模拟还在输入框里打字，没有失焦）。
+    typeNumber(lengthInput(panel), "8");
+    expect(lengthInput(panel).value).toBe("8");
+    expect(generatedValue(panel)).toHaveLength(8);
+
+    // 点「填充」时不会失焦，所以必须已经用新长度生成结果。
+    trustedClick(buttonByText(panel, "填充"));
+    expect(field("password").value).toBe(generatedValue(panel));
+    expect(field("password").value).toHaveLength(8);
+  });
+
+  it("raises the length to fit the minimums and refuses to go below them", async () => {
+    const panel = await openPanel();
+    typeNumber(minimumInput(panel, "uppercase"), "32", "change");
+    // 1 + 1 + 1 + 32 = 35，长度必须抬到 35。
+    expect(lengthInput(panel).value).toBe("35");
+    expect(generatedValue(panel)).toHaveLength(35);
+
+    typeNumber(lengthInput(panel), "10", "change");
+    expect(lengthInput(panel).value).toBe("35");
+    expect(generatedValue(panel)).toHaveLength(35);
+  });
+
+  it("excludes a type with minimum 0 but keeps at least one type enabled", async () => {
+    const panel = await openPanel();
+    typeNumber(minimumInput(panel, "symbols"), "0", "change");
+    expect(generatedValue(panel)).toMatch(/^[A-Za-z0-9]{20}$/);
+
+    // 把剩下三类也改成 0：最后一次会被拒绝，面板保留原值并提示。
+    for (const key of ["uppercase", "lowercase"]) typeNumber(minimumInput(panel, key), "0", "change");
+    typeNumber(minimumInput(panel, "digits"), "0", "change");
+    expect(minimumInput(panel, "digits").value).toBe("1");
+    expect(generatedValue(panel)).toMatch(/^[a-z0-9]{20}$/);
+    expect(panel.querySelector(".status")?.textContent).toBe("至少保留一种字符类型。");
+  });
+
+  it("switches modes with their own length, range and controls", async () => {
+    const panel = await openPanel();
+    trustedClick(buttonByText(panel, "PIN"));
+    await vi.waitFor(() => expect(storage[MODE_KEY]).toBe("PIN"));
+    expect(lengthCaption(panel)).toBe("PIN 长度");
+    expect(lengthInput(panel).value).toBe("6");
+    expect(lengthInput(panel).min).toBe("4");
+    expect(lengthInput(panel).max).toBe("32");
+    expect(minimumGroup(panel).classList.contains("is-hidden")).toBe(true);
+    expect(generatedValue(panel)).toMatch(/^[0-9]{6}$/);
+
+    trustedClick(buttonByText(panel, "短语"));
+    await vi.waitFor(() => expect(lengthCaption(panel)).toBe("单词数"));
+    expect(lengthInput(panel).value).toBe("4");
+    expect(lengthInput(panel).min).toBe("2");
+    expect(generatedValue(panel).split("-")).toHaveLength(4);
+
+    // 「单词」模式修回真正的单词密码（字母 + 补足的数字），不再是随机字符。
+    trustedClick(buttonByText(panel, "单词"));
+    await vi.waitFor(() => expect(lengthCaption(panel)).toBe("单词密码长度"));
+    expect(lengthInput(panel).value).toBe("12");
+    const wordPassword = generatedValue(panel);
+    expect(wordPassword).toMatch(/^[a-z0-9]{12}$/);
+    // 单词密码由词表单词拼成，可能再用数字补足；不再是随机大小写 + 符号。
+    expect(DEFAULT_WORD_PASSWORD_WORDS.some((word) => wordPassword.startsWith(word))).toBe(true);
+
+    trustedClick(buttonByText(panel, "密码"));
+    await vi.waitFor(() => expect(lengthCaption(panel)).toBe("长度"));
+    expect(lengthInput(panel).value).toBe("20");
+    expect(minimumGroup(panel).classList.contains("is-hidden")).toBe(false);
+  });
+
+  it("persists length and minimum changes", async () => {
     const panel = await openPanel();
     const before = generatedValue(panel);
-    // 把数字改为 0，改符号为 0，改大写为 0 → 密码应全为小写字母。
-    const inputs = [...panel.querySelectorAll<HTMLInputElement>(".count-row input[type='number']")];
-    for (const input of inputs) {
-      const key = input.getAttribute("data-count");
-      if (key !== "lowercase") {
-        input.value = "0";
-        input.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
-      }
-    }
+    typeNumber(lengthInput(panel), "16", "change");
+    typeNumber(minimumInput(panel, "symbols"), "0", "change");
     await vi.waitFor(() => {
-      const value = generatedValue(panel);
-      expect(value).toMatch(/^[a-z]+$/);
-      expect(value.length).toBe(10);
+      const saved = storage[SETTINGS_KEY] as { lengths: { SYMBOL: number }; minimums: { symbols: number } };
+      expect(saved.lengths.SYMBOL).toBe(16);
+      expect(saved.minimums.symbols).toBe(0);
     });
-    expect((storage[COUNTS_KEY] as { lowercase: number }).lowercase).toBe(10);
+    expect(generatedValue(panel)).toMatch(/^[A-Za-z0-9]{16}$/);
     expect(before).not.toBe(generatedValue(panel));
+  });
+
+  it("migrates the legacy per-type counts into a length plus minimums", async () => {
+    controller.dispose();
+    storage[COUNTS_KEY] = { uppercase: 2, lowercase: 10, digits: 4, symbols: 3 };
+    controller = installPasswordGenerator(dom.window.document);
+    const panel = await openPanel();
+    // 旧的四类数量当作最少数量，长度取默认 20 与合计 19 的较大值。
+    expect(lengthInput(panel).value).toBe("20");
+    expect(["uppercase", "lowercase", "digits", "symbols"].map((key) => Number(minimumInput(panel, key).value))).toEqual([2, 10, 4, 3]);
+    expect(generatedValue(panel)).toHaveLength(20);
+    await vi.waitFor(() => expect((storage[SETTINGS_KEY] as { minimums: { lowercase: number } }).minimums.lowercase).toBe(10));
   });
 
   it("switches between password and PIN modes and persists the selection", async () => {

@@ -131,6 +131,35 @@ test("登录页与误标 new-password 的表单都不显示生成器图标", asy
   }
 });
 
+test("长度输入框可以用鼠标聚焦后手动输入并填充", async ({}, testInfo) => {
+  let context: BrowserContext | undefined;
+  try {
+    const launched = await launchExtension(testInfo, "generator-counts");
+    context = launched.context;
+    await routePage(context, "/register", signupPage);
+    const page = await context.newPage();
+    await page.goto("https://generator.example.test/register");
+    await page.locator(ICON_SELECTOR).first().click();
+    const panel = page.locator(PANEL_SELECTOR);
+    await expect(panel).toHaveCount(1);
+
+    // 面板在闭包 shadow 里，坐标只能按固定布局推算：16px 内边距 + 头部/结果/模式三行之后是「长度」输入框。
+    // 以前整块面板阻止 pointerdown，鼠标点不进去，这里会填出默认 20 位。
+    const origin = await panel.evaluate((host) => ({ left: parseFloat(host.style.left), top: parseFloat(host.style.top) }));
+    await page.mouse.click(origin.left + 144, origin.top + 214);
+    await page.keyboard.press("Control+a");
+    await page.keyboard.type("12");
+
+    // 从长度框 Tab 过四个最少数量框到「填充」并回车。
+    for (let index = 0; index < 7; index += 1) await page.keyboard.press("Tab");
+    await page.keyboard.press("Enter");
+    await expect.poll(() => page.locator("#password").inputValue()).not.toBe("");
+    expect(await page.locator("#password").inputValue()).toHaveLength(12);
+  } finally {
+    await context?.close();
+  }
+});
+
 test("窄屏与 200% 字号下面板与图标都在窗口内", async ({}, testInfo) => {
   let context: BrowserContext | undefined;
   try {
