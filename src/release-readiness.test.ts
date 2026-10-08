@@ -67,9 +67,10 @@ describe("store-facing privacy and security artifacts", () => {
 
 describe("reproducible release contract", () => {
   it("keeps deterministic packaging and independent verification in the release gate", async () => {
-    const [pkg, manifest, workflow, releaseGuide, viteConfig, packager, verifier] = await Promise.all([
+    const [pkg, manifest, lockfile, workflow, releaseGuide, viteConfig, packager, verifier] = await Promise.all([
       readJson<{ version: string; scripts: Record<string, string> }>("package.json"),
       readJson<{ version: string }>("public/manifest.json"),
+      readJson<{ version: string; packages: Record<string, { version: string }> }>("package-lock.json"),
       read(".github/workflows/ci.yml"),
       read("docs/RELEASE.md"),
       read("vite.config.ts"),
@@ -77,6 +78,9 @@ describe("reproducible release contract", () => {
       read("scripts/verify-release.mjs")
     ]);
     expect(pkg.version).toBe(manifest.version);
+    // 版本号三处同步是硬性要求：上次只改了 package.json 导致 lockfile 漂移到 0.1.36，这里守住。
+    expect(pkg.version).toBe(lockfile.version);
+    expect(pkg.version).toBe(lockfile.packages[""].version);
     expect(pkg.scripts.build).toContain("verify-extension-pages.mjs");
     expect(pkg.scripts["package:verify"]).toContain("verify-release.mjs");
     expect(pkg.scripts["release:check"]).toContain("package:verify");

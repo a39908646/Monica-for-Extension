@@ -53,6 +53,10 @@ npm run package:release
 npm run package:verify
 ```
 
+## 版本号
+
+每批面向用户的改动落地时就立即提升版本号（`package.json`、`public/manifest.json`、`package-lock.json` 三处同步，用 `npm version X.Y.Z --no-git-tag-version` 加改 manifest），不要等到打包时再补；`src/release-readiness.test.ts` 会拒绝三处不一致的提交。
+
 发布前还应确认版本号、商店文案、隐私政策、截图脱敏和 Git tag/Release 指向同一已验证提交。商店账号提交和签名由账号持有人完成，不在本仓库自动化范围内。
 
 ## 本地开发包
