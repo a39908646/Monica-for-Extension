@@ -1,0 +1,173 @@
+/* base.css —— 字体与图标字体、全局重置、排版、m3e 组件令牌。
+   从原来的 styles.css 按原顺序切分（1-170 行）；由 styles.css 按同样顺序 @import，
+   顺序不可调整：这些分片共享同一条级联。 */
+@font-face {
+  font-family: "Material Symbols Outlined";
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url("/fonts/monica-symbols.woff2") format("woff2");
+}
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "liga";
+}
+
+/* 设计令牌（调色板 / 形状 / 字体 / 动效 / 布局）统一在 tokens.css，本文件只消费。 */
+
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+html,
+body {
+  overflow-x: clip;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.sidebar nav::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+body {
+  margin: 0;
+  color: var(--app-text);
+  background: var(--app-bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 1000;
+  padding: 10px 14px;
+  border-radius: var(--app-shape-card);
+  color: #fff;
+  background: var(--app-primary);
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* 全局焦点规则统一在 nothing.css（tokens.css 之后加载），此处不再重复。 */
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+code {
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 2.75rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.12;
+}
+
+h2 {
+  font-size: 1.35rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+h3 {
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+p,
+small,
+dd,
+dt {
+  overflow-wrap: anywhere;
+}
+
+m3e-card {
+  --m3e-card-padding: 20px;
+  --m3e-card-shape: var(--app-shape-card);
+  --m3e-filled-card-container-color: color-mix(in srgb, var(--md-sys-color-surface-container, var(--app-surface)) 88%, var(--app-bg));
+  --m3e-filled-card-text-color: var(--md-sys-color-on-surface, var(--app-text));
+  --m3e-filled-card-hover-container-elevation: var(--md-sys-elevation-level1, 0 1px 3px rgba(0, 0, 0, 0.14));
+  --m3e-outlined-card-container-color: color-mix(in srgb, var(--md-sys-color-surface-container-low, var(--app-surface)) 92%, var(--app-bg));
+  --m3e-outlined-card-outline-color: color-mix(in srgb, var(--app-outline) 54%, transparent);
+  border-radius: var(--m3e-card-shape);
+  overflow: hidden;
+}
+
+m3e-card > [slot="content"],
+m3e-card > [slot="header"],
+m3e-card > [slot="actions"],
+m3e-card > [slot="footer"],
+.stack {
+  min-width: 0;
+  max-width: 100%;
+}
+
+m3e-card > [slot="content"] {
+  inline-size: calc(100% - var(--m3e-card-padding, 20px) - var(--m3e-card-padding, 20px));
+  contain: inline-size;
+}
+
+m3e-button {
+  white-space: nowrap;
+}
+
+m3e-icon {
+  --m3e-icon-size: var(--app-icon-medium);
+  display: inline-grid;
+  /* 盒子必须跟着字号走：写死 24px 时，20px 字号下的图标会被画在盒子左上角，
+     看起来偏离控件中心。 */
+  width: 1em;
+  height: 1em;
+  place-items: center;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+m3e-icon-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+

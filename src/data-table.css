@@ -1,0 +1,110 @@
+/* data-table.css —— 数据卡片与表格（含表头/单元格/悬停）。
+   从原来的 styles.css 按原顺序切分（941-1047 行）；由 styles.css 按同样顺序 @import，
+   顺序不可调整：这些分片共享同一条级联。 */
+.data-card {
+  min-width: 0;
+}
+
+.data-card table {
+  table-layout: fixed;
+}
+
+.data-card th:last-child,
+.data-card .action-cell {
+  width: 148px;
+  min-width: 0;
+  padding-inline: 4px;
+}
+
+.data-card td {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.data-card .row-title {
+  min-width: 0;
+}
+
+.data-card .url-list {
+  max-width: 100%;
+}
+
+.card-head {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 4px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  padding: 0 8px 8px;
+}
+
+table {
+  width: 100%;
+  min-width: min(920px, 100%);
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+
+th,
+td {
+  padding: 12px;
+  text-align: left;
+  vertical-align: middle;
+  overflow-wrap: normal;
+}
+
+th {
+  color: var(--md-sys-color-on-surface-variant, var(--app-muted));
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+tbody tr {
+  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+tbody tr:hover {
+  transform: translateY(-1px);
+}
+
+tbody td {
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-lowest, var(--app-bg)) 84%, var(--app-surface));
+  border-block: 1px solid var(--app-hairline);
+}
+
+tbody td:first-child {
+  border-inline-start: 1px solid var(--app-hairline);
+  border-start-start-radius: var(--app-shape-card);
+  border-end-start-radius: var(--app-shape-card);
+}
+
+tbody td:last-child {
+  border-inline-end: 1px solid var(--app-hairline);
+  border-start-end-radius: var(--app-shape-card);
+  border-end-end-radius: var(--app-shape-card);
+}
+
+tbody tr:hover td {
+  background: color-mix(in srgb, var(--app-selected) 36%, var(--app-surface));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--md-sys-color-shadow, #000) 12%, transparent);
+}
+
+.row-title {
+  min-width: 220px;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 12px;
+  padding: 1px;
+}
+

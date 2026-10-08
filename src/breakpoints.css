@@ -1,0 +1,422 @@
+/* breakpoints.css —— 断点响应式：1240 / 1180 / 900 / 560 及容器查询。
+   从原来的 styles.css 按原顺序切分（1424-1842 行）；由 styles.css 按同样顺序 @import，
+   顺序不可调整：这些分片共享同一条级联。 */
+@media (max-width: 1240px) {
+  .appbar-trailing {
+    gap: 8px;
+  }
+
+  .search {
+    width: clamp(220px, 30vw, 420px);
+  }
+
+  .account {
+    max-width: 54px;
+    padding-inline-end: 4px;
+  }
+
+  .account div {
+    display: none;
+  }
+}
+
+@media (max-width: 1180px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .source-grid,
+  .settings-grid,
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .shell {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(86vw, var(--app-drawer-width));
+    transform: translateX(-100%);
+  }
+
+  .shell.nav-open .sidebar {
+    transform: translateX(0);
+    transition: transform var(--motion-medium) var(--motion-ease);
+    box-shadow: 0 0 0 100vw rgba(0, 0, 0, 0.32);
+  }
+
+  .mobile-menu {
+    display: inline-grid;
+  }
+
+  main {
+    width: 100%;
+    padding: 12px 16px 40px;
+  }
+
+  .page-appbar {
+    margin: -12px -16px 0;
+    --m3e-app-bar-padding-left: 12px;
+    --m3e-app-bar-padding-right: 12px;
+    --m3e-app-bar-small-container-height: 72px;
+  }
+
+  .appbar-trailing {
+    width: 100%;
+  }
+
+  .search {
+    flex: 1 1 180px;
+    width: auto;
+  }
+
+  .quick-toolbar m3e-icon-button:nth-of-type(3),
+  .account {
+    display: none;
+  }
+
+  .page-heading {
+    min-height: auto;
+    justify-content: flex-start;
+    align-items: start;
+    display: grid;
+    gap: 18px;
+    padding: 24px 0 22px;
+  }
+
+  .card-head {
+    display: grid;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .table-wrap {
+    overflow: visible;
+    padding: 0;
+  }
+
+  .data-card {
+    --m3e-filled-card-container-color: transparent;
+    --m3e-card-container-color: transparent;
+    --m3e-card-padding: 0;
+  }
+
+  table,
+  thead,
+  tbody,
+  tr,
+  td {
+    display: block;
+  }
+
+  table {
+    min-width: 0;
+    border-spacing: 0;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  tbody tr {
+    border-radius: var(--app-shape-card);
+    background: color-mix(in srgb, var(--md-sys-color-surface-container-lowest, var(--app-bg)) 84%, var(--app-surface));
+    overflow: hidden;
+  }
+
+  tbody td,
+  tbody td:first-child,
+  tbody td:last-child {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  tbody tr:hover {
+    transform: none;
+  }
+
+  tbody tr:hover td {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  td {
+    min-height: 40px;
+    padding: 9px 14px;
+    display: grid;
+    grid-template-columns: 108px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+
+  td::before {
+    content: attr(data-label);
+    color: var(--md-sys-color-on-surface-variant, var(--app-muted));
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+
+  .item-cell {
+    display: block;
+    grid-template-columns: minmax(0, 1fr);
+    padding-block: 14px;
+    background: color-mix(in srgb, var(--md-sys-color-secondary-container, var(--app-selected)) 46%, transparent);
+  }
+
+  .item-cell::before,
+  .empty-status {
+    display: none;
+  }
+
+  .data-card .action-cell {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 52px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-block: 4px;
+    border-top: 1px solid var(--app-hairline);
+  }
+
+  .data-card .action-cell::before {
+    display: none;
+  }
+
+  .data-card .action-cell m3e-icon-button {
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    flex: 0 0 44px;
+  }
+
+  .row-title {
+    min-width: 0;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@container manager-content (max-width: 56rem) {
+  .content-grid.with-detail,
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .getting-started {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .getting-started > m3e-button,
+  .getting-started-actions {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .table-wrap {
+    overflow: visible;
+    padding: 0;
+  }
+
+  .data-card {
+    --m3e-filled-card-container-color: transparent;
+    --m3e-card-container-color: transparent;
+    --m3e-card-padding: 0;
+  }
+
+  .data-card table,
+  .data-card thead,
+  .data-card tbody,
+  .data-card tr,
+  .data-card td {
+    display: block;
+  }
+
+  .data-card table {
+    min-width: 0;
+    border-spacing: 0;
+  }
+
+  .data-card thead {
+    display: none;
+  }
+
+  .data-card tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .data-card tbody tr {
+    border-radius: var(--app-shape-card);
+    background: color-mix(in srgb, var(--md-sys-color-surface-container-lowest, var(--app-bg)) 84%, var(--app-surface));
+    overflow: hidden;
+  }
+
+  .data-card tbody td,
+  .data-card tbody td:first-child,
+  .data-card tbody td:last-child {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .data-card tbody tr:hover {
+    transform: none;
+  }
+
+  .data-card tbody tr:hover td {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .data-card td {
+    min-height: 40px;
+    padding: 9px 14px;
+    display: grid;
+    grid-template-columns: minmax(6.5rem, auto) minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+
+  .data-card td::before {
+    content: attr(data-label);
+    color: var(--md-sys-color-on-surface-variant, var(--app-muted));
+    font-size: 0.76rem;
+    font-weight: 600;
+  }
+
+  .data-card .item-cell {
+    display: block;
+    grid-template-columns: minmax(0, 1fr);
+    padding-block: 14px;
+    background: color-mix(in srgb, var(--md-sys-color-secondary-container, var(--app-selected)) 46%, transparent);
+  }
+
+  .data-card .item-cell::before,
+  .data-card .empty-status {
+    display: none;
+  }
+
+  .data-card .action-cell {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 52px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-block: 4px;
+    border-top: 1px solid var(--app-hairline);
+  }
+
+  .data-card .action-cell::before {
+    display: none;
+  }
+
+  .data-card .action-cell m3e-icon-button {
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    flex: 0 0 44px;
+  }
+
+  .source-title p {
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 560px) {
+  h1 {
+    font-size: 2.05rem;
+  }
+
+  .appbar-trailing {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .search {
+    flex: 0 1 auto;
+    width: min(44vw, 180px);
+    max-width: 100%;
+    min-width: 0;
+    min-height: 52px;
+    gap: 8px;
+    padding-inline: 12px;
+  }
+
+  .appbar-create,
+  .appbar-filter {
+    width: 56px;
+    min-width: 56px;
+    max-width: 56px;
+    --m3e-button-small-leading-space: 4px;
+    --m3e-button-small-trailing-space: 4px;
+  }
+
+  .appbar-action-label {
+    display: none;
+  }
+
+  .search input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .search input::placeholder {
+    color: transparent;
+  }
+
+  .quick-toolbar {
+    --m3e-toolbar-spacing: 0;
+    --m3e-toolbar-rounded-padding: 2px;
+  }
+
+  .quick-toolbar m3e-icon-button:nth-of-type(2) {
+    display: none;
+  }
+
+  .primary-action {
+    width: auto;
+    inline-size: max-content;
+    min-width: 132px;
+  }
+
+  .palette-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .data-card td {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}
+

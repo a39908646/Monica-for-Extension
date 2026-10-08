@@ -1,0 +1,65 @@
+/* appearance.css —— 配色选择器与色块、动效卡。
+   从原来的 styles.css 按原顺序切分（1328-1389 行）；由 styles.css 按同样顺序 @import，
+   顺序不可调整：这些分片共享同一条级联。 */
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.palette-button {
+  min-height: 48px;
+  border: 0;
+  border-radius: var(--app-shape-card);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 0 12px;
+  color: var(--md-sys-color-on-surface, var(--app-text));
+  background: var(--md-sys-color-surface-container-high, var(--app-surface-high));
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--motion-ease), transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+.palette-button:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--md-sys-color-secondary-container, var(--app-selected)) 68%, var(--app-surface-high));
+}
+
+.palette-button.selected {
+  background: var(--md-sys-color-secondary-container, var(--app-selected));
+  box-shadow: inset 0 0 0 2px var(--md-sys-color-primary, var(--app-primary));
+}
+
+.swatch {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--app-shape-card);
+  background: var(--swatch);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-text) 16%, transparent);
+}
+
+.swatch::after {
+  content: "";
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 7px;
+  height: 7px;
+  border: 2px solid var(--md-sys-color-surface-container-high, var(--app-surface-high));
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.motion-card {
+  animation: card-in var(--motion-medium) var(--motion-ease) both;
+  transition: transform var(--motion-fast) var(--motion-ease), filter var(--motion-fast) var(--motion-ease);
+}
+
+.motion-card:hover {
+  transform: translateY(-1px);
+}
+

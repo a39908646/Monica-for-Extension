@@ -1,0 +1,37 @@
+/* motion.css —— Vue 过渡与关键帧。
+   从原来的 styles.css 按原顺序切分（1390-1423 行）；由 styles.css 按同样顺序 @import，
+   顺序不可调整：这些分片共享同一条级联。 */
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity var(--motion-fast) var(--motion-ease), transform var(--motion-fast) var(--motion-ease);
+}
+
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.row-motion-enter-active,
+.row-motion-leave-active {
+  transition: opacity var(--motion-fast) var(--motion-ease), transform var(--motion-fast) var(--motion-ease);
+}
+
+.row-motion-enter-from,
+.row-motion-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

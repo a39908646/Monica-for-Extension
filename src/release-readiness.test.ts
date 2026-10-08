@@ -17,6 +17,24 @@ const MANAGER_CSS_FILES = [
   "src/manager-steam.css"
 ];
 
+/** 原 styles.css 按职责拆成这些分片，由 styles.css 按同样顺序 @import；顺序不可调整。 */
+const GLOBAL_CSS_FILES = [
+  "base.css",
+  "auth.css",
+  "shell.css",
+  "appbar.css",
+  "pages.css",
+  "filters.css",
+  "data-table.css",
+  "list.css",
+  "panels.css",
+  "appearance.css",
+  "motion.css",
+  "breakpoints.css",
+  "credential-list.css",
+  "motion-reduce.css"
+].map((file) => `src/${file}`);
+
 describe("release-facing localization", () => {
   it.each(localeOptions.map((option) => option.manifest))("resolves every MV3 store string in %s", async (locale) => {
     const manifest = JSON.parse(await read("public/manifest.json")) as Record<string, any>;
@@ -111,7 +129,7 @@ describe("reproducible release contract", () => {
 describe("visual design contract", () => {
   it("uses solid Material surfaces without CSS gradients", async () => {
     const sources = await Promise.all([
-      read("src/styles.css"),
+      ...GLOBAL_CSS_FILES.map((file) => read(file)),
       ...MANAGER_CSS_FILES.map((file) => read(file)),
       read("src/popup/popup.css"),
       read("scripts/capture-store-assets.mjs")
@@ -121,7 +139,7 @@ describe("visual design contract", () => {
 
   it("keeps the shared M3E shape and icon tokens stable", async () => {
     const tokens = await read("src/tokens.css");
-    const styles = await read("src/styles.css");
+    const base = await read("src/base.css");
     const popupStyles = await read("src/popup/popup.css");
     // 形状/图标令牌只在 tokens.css 定义一次。这里断言的是实际生效的值：旧断言写的是
     // styles.css 里的 --app-shape-card: 8px，而那个值一直被 nothing.css 的 12px 覆盖，
@@ -132,14 +150,14 @@ describe("visual design contract", () => {
     expect(tokens).toContain("--app-shape-pill: 999px");
     expect(tokens).toContain("--app-icon-small: 20px");
     expect(tokens).toContain("--app-icon-medium: 24px");
-    expect(styles).toMatch(/m3e-icon\s*\{[^}]*--m3e-icon-size:\s*var\(--app-icon-medium\)/s);
-    expect(styles).toMatch(/m3e-icon-button\s*\{[^}]*min-width:\s*44px[^}]*min-height:\s*44px/s);
+    expect(base).toMatch(/m3e-icon\s*\{[^}]*--m3e-icon-size:\s*var\(--app-icon-medium\)/s);
+    expect(base).toMatch(/m3e-icon-button\s*\{[^}]*min-width:\s*44px[^}]*min-height:\s*44px/s);
     expect(popupStyles).toMatch(/\.popup-shell m3e-button\s*\{[^}]*--m3e-button-icon-size:\s*var\(--app-icon-medium\)/s);
     expect(popupStyles).toMatch(/\.popup-shell m3e-icon-button\s*\{[^}]*--m3e-icon-button-icon-size:\s*var\(--app-icon-medium\)/s);
 
     // 页面 CSS 只消费令牌：形状与焦点令牌不允许在 tokens.css 之外再定义一次，
     // 否则又会回到「同一个值在两个文件各写一遍」的老路。
-    for (const file of ["src/styles.css", ...MANAGER_CSS_FILES, "src/nothing.css", "src/home.css", "src/detail-layout.css", "src/responsive.css", "src/popup/popup.css"]) {
+    for (const file of [...GLOBAL_CSS_FILES, ...MANAGER_CSS_FILES, "src/nothing.css", "src/home.css", "src/detail-layout.css", "src/responsive.css", "src/popup/popup.css"]) {
       const css = await read(file);
       expect(css, `${file} 不应重复定义形状/焦点令牌`).not.toMatch(/--app-shape-(?:card|field|dialog|pill)\s*:|--app-focus-(?:wash|shadow)\s*:/);
     }
@@ -150,6 +168,21 @@ describe("visual design contract", () => {
     const imported = [...main.matchAll(/import "\.\/(manager-[a-z-]+\.css)";/g)].map((match) => `src/${match[1]}`);
     // 这些文件是同一条级联的切片，顺序错了会改变同名选择器的胜负。
     expect(imported).toEqual(MANAGER_CSS_FILES);
+  });
+
+  it("imports the global stylesheet slices in cascade order", async () => {
+    const barrel = await read("src/styles.css");
+    const imported = [...barrel.matchAll(/@import "\.\/([a-z-]+\.css)";/g)].map((match) => `src/${match[1]}`);
+    expect(imported).toEqual(GLOBAL_CSS_FILES);
+  });
+
+  it("keeps exactly one global reduced-motion override", async () => {
+    // 以前 styles.css 和 nothing.css 各有一份 * 上的 !important 降级，后者静默盖掉前者。
+    // 组件自己的降级（例如 popup 的 .spinner）不算全局，不在此列。
+    for (const file of ["src/nothing.css", "src/home.css", "src/detail-layout.css", "src/responsive.css", ...MANAGER_CSS_FILES]) {
+      expect(await read(file), `${file} 不应再定义全局 reduced-motion 降级`).not.toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\*/);
+    }
+    expect(await read("src/motion-reduce.css")).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\*/);
   });
 
   it("does not nest M3E cards in manager templates", async () => {

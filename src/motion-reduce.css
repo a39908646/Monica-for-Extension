@@ -1,0 +1,14 @@
+/* motion-reduce.css —— 全局 prefers-reduced-motion 降级（唯一一份）。
+   从原来的 styles.css 按原顺序切分（1971-1981 行）；由 styles.css 按同样顺序 @import，
+   顺序不可调整：这些分片共享同一条级联。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}
+

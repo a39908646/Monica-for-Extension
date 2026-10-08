@@ -1,0 +1,91 @@
+/* panels.css —— 详情卡、迷你行、来源卡、开关行、空态。
+   从原来的 styles.css 按原顺序切分（1240-1327 行）；由 styles.css 按同样顺序 @import，
+   顺序不可调整：这些分片共享同一条级联。 */
+.detail-card {
+  align-self: start;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.detail-grid div {
+  padding: 12px;
+  border-radius: var(--app-shape-card);
+  background: var(--md-sys-color-surface-container-high, var(--app-surface-high));
+}
+
+.detail-grid dt {
+  color: var(--md-sys-color-on-surface-variant, var(--app-muted));
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.detail-grid dd {
+  margin: 4px 0 0;
+}
+
+.mini-row {
+  min-height: 40px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border-radius: var(--app-shape-card);
+  padding: 4px 8px 4px 4px;
+}
+
+.mini-row:hover {
+  background: color-mix(in srgb, var(--md-sys-color-secondary-container, var(--app-selected)) 34%, transparent);
+}
+
+.mini-row m3e-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--app-shape-card);
+  display: grid;
+  place-items: center;
+  color: var(--md-sys-color-primary, var(--app-primary));
+  background: var(--md-sys-color-surface-container-highest, var(--app-surface-high));
+}
+
+.mini-row small {
+  color: var(--md-sys-color-on-surface-variant, var(--app-muted));
+  text-align: right;
+}
+
+.source-card {
+  display: grid;
+  gap: 14px;
+}
+
+.source-card code {
+  padding: 12px;
+  border-radius: var(--app-shape-card);
+  background: var(--md-sys-color-surface-container-high, var(--app-surface-high));
+}
+
+.switch-row {
+  min-height: 52px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  border-radius: var(--app-shape-card);
+  padding: 4px 4px 4px 14px;
+}
+
+.switch-row:hover {
+  background: color-mix(in srgb, var(--md-sys-color-secondary-container, var(--app-selected)) 28%, transparent);
+}
+
+.empty {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  color: var(--md-sys-color-on-surface-variant, var(--app-muted));
+}
+

@@ -224,4 +224,6 @@ body.popup-body .popup-shell { max-width: 100%; background: var(--app-bg); paddi
   :where([role='dialog']) { max-inline-size: calc(100vw - 16px); max-block-size: calc(100dvh - 16px); }
   .locked-autofill-option { padding: 12px; }
 }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; scroll-behavior: auto !important; } }
+/* 全局 prefers-reduced-motion 降级只有一处：motion-reduce.css（styles.css 引入）。
+   原先这里和 styles.css 各写一份、都是 * 上的 !important，后者被这里静默盖掉，
+   连 animation-iteration-count 都只生效了一半。 */

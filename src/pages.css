@@ -1,0 +1,263 @@
+/* pages.css —— 页面标题、指标、各类网格、设置页与设置弹窗。
+   从原来的 styles.css 按原顺序切分（559-818 行）；由 styles.css 按同样顺序 @import，
+   顺序不可调整：这些分片共享同一条级联。 */
+.page-heading {
+  min-height: 120px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px 0 24px;
+}
+
+.page-heading p {
+  margin-top: 4px;
+  color: var(--md-sys-color-on-surface-variant, var(--app-muted));
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.primary-action {
+  inline-size: max-content;
+  flex: 0 0 auto;
+  min-width: 148px;
+  --m3e-button-container-height: 48px;
+  --m3e-button-label-text-font-size: 0.95rem;
+  --m3e-button-icon-size: var(--app-icon-small);
+  --m3e-button-leading-space: 1rem;
+  --m3e-button-trailing-space: 1rem;
+}
+
+.metrics,
+.source-grid,
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.source-grid,
+.settings-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  align-items: start;
+  gap: 12px;
+}
+
+.settings-grid > m3e-card {
+  align-self: start;
+  --m3e-card-padding: 16px;
+}
+
+.settings-grid > m3e-card .stack {
+  gap: 12px;
+}
+
+.settings-page {
+  grid-template-columns: minmax(0, 900px);
+  max-width: 920px;
+}
+
+.settings-page > m3e-card {
+  width: 100%;
+  --m3e-card-padding: 0;
+}
+
+.settings-page > .settings-list-card {
+  --m3e-card-padding: 0;
+}
+
+.settings-page > .windows-hello-card {
+  --m3e-card-padding: 0;
+}
+
+.settings-page .settings-disclosure > summary {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 24px;
+  min-height: 72px;
+  align-items: center;
+  padding: 8px 16px;
+}
+
+.settings-page .settings-disclosure > summary > span:not(.settings-entry-icon) {
+  grid-column: 2;
+}
+
+.settings-page .settings-disclosure > summary > .settings-entry-icon {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.settings-page .settings-disclosure > summary > m3e-icon:not(.settings-disclosure-chevron) {
+  grid-column: 1;
+  grid-row: 1;
+  width: 48px !important;
+  min-width: 48px;
+  max-width: 48px;
+  height: 48px !important;
+  min-height: 48px;
+  max-height: 48px;
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border-radius: var(--app-shape-card);
+  color: var(--md-sys-color-on-primary-container, var(--app-text));
+  background: var(--md-sys-color-primary-container, var(--app-selected));
+  --m3e-icon-size: 24px;
+}
+
+.settings-page .settings-disclosure > summary .settings-disclosure-chevron {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.settings-page .settings-disclosure-content {
+  padding: 16px;
+}
+
+.settings-page .settings-entry {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 24px;
+  min-height: 72px;
+  align-items: center;
+  padding: 8px 16px;
+}
+
+.settings-page .settings-entry > span:not(.settings-entry-icon) {
+  grid-column: 2;
+}
+
+.settings-page .settings-entry-icon {
+  grid-column: 1;
+  grid-row: 1;
+  width: 48px !important;
+  min-width: 48px;
+  max-width: 48px;
+  height: 48px !important;
+  min-height: 48px;
+  max-height: 48px;
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border-radius: var(--app-shape-card);
+  color: var(--md-sys-color-on-primary-container, var(--app-text));
+  background: var(--md-sys-color-primary-container, var(--app-selected));
+}
+
+.settings-page .settings-entry-icon m3e-icon,
+.settings-page .settings-entry-chevron {
+  --m3e-icon-size: 24px;
+}
+
+.settings-page .settings-entry-icon m3e-icon {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  line-height: 1;
+  font-size: 24px;
+}
+
+.settings-page .settings-entry-chevron {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.settings-disclosure { min-width: 0; }
+.settings-disclosure > summary { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 4px; cursor: pointer; list-style: none; }
+.settings-disclosure > summary::-webkit-details-marker { display: none; }
+.settings-disclosure > summary > span { min-width: 0; display: grid; gap: 4px; }
+.settings-disclosure > summary strong { font-size: 1.15rem; }
+.settings-disclosure > summary small { color: var(--md-sys-color-on-surface-variant, var(--app-muted)); }
+.settings-disclosure > summary m3e-icon { --m3e-icon-size: 20px; transition: transform var(--motion-fast) var(--motion-ease); }
+.settings-page .settings-disclosure > summary .settings-disclosure-chevron,
+.settings-page .settings-entry-chevron { --m3e-icon-size: 24px; }
+.settings-disclosure[open] > summary .settings-disclosure-chevron { transform: rotate(180deg); }
+.settings-disclosure > summary .settings-disclosure-chevron { margin-left: auto; }
+.hello-disclosure > summary { min-height: 64px; }
+.hello-disclosure > summary .settings-disclosure-chevron { --m3e-icon-size: 24px; }
+.hello-disclosure > summary .settings-disclosure-chevron { --m3e-icon-size: 20px; }
+.settings-disclosure-content { display: grid; gap: 12px; border-top: 1px solid var(--app-outline); padding: 16px 4px 4px; }
+.settings-entry { width: 100%; min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; padding: 0 4px; color: inherit; background: transparent; text-align: left; font: inherit; cursor: pointer; }
+.settings-entry > span { min-width: 0; display: grid; gap: 4px; }
+.settings-entry strong { font-size: 1.15rem; }
+.settings-entry small { color: var(--md-sys-color-on-surface-variant, var(--app-muted)); }
+.settings-entry m3e-icon { --m3e-icon-size: 20px; }
+.settings-modal { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgb(0 0 0 / 48%); }
+.settings-modal-panel { width: min(520px, 100%); max-height: calc(100vh - 32px); overflow: auto; border: 1px solid var(--app-outline); border-radius: var(--app-shape-dialog); color: var(--md-sys-color-on-surface, var(--app-text)); background: var(--md-sys-color-surface-container, var(--app-surface)); box-shadow: 0 24px 48px rgb(0 0 0 / 32%); }
+.settings-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 20px 12px; }
+.settings-modal-header h2, .settings-modal-header p { margin: 0; }
+.settings-modal-header p { margin-top: 4px; color: var(--md-sys-color-on-surface-variant, var(--app-muted)); }
+.settings-modal-close { width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 50%; color: inherit; background: transparent; cursor: pointer; }
+.settings-modal-close:hover { background: var(--md-sys-color-secondary-container, var(--app-selected)); }
+.settings-modal-close m3e-icon { --m3e-icon-size: 20px; }
+.settings-modal-content { display: grid; gap: 12px; padding: 16px 20px 20px; }
+
+/* Settings follows the compact WebUI list rhythm instead of dashboard sizing. */
+.settings-main .page-heading {
+  min-height: 88px;
+  padding: 18px 0 14px;
+}
+
+.settings-main .page-heading h1 {
+  font-size: 2.15rem;
+}
+
+.settings-main .page-heading p {
+  font-size: .82rem;
+}
+
+.settings-main .settings-grid {
+  gap: 8px;
+}
+
+.settings-main .settings-page > m3e-card {
+  --m3e-card-shape: 8px;
+}
+
+.settings-main .settings-page .settings-disclosure > summary,
+.settings-main .settings-page .settings-entry {
+  min-height: 64px;
+}
+
+.settings-main .settings-page .settings-disclosure > summary strong,
+.settings-main .settings-page .settings-entry strong {
+  font-size: 1rem;
+}
+
+.settings-main .settings-page .settings-disclosure > summary small,
+.settings-main .settings-page .settings-entry small {
+  font-size: .82rem;
+}
+
+.metric-card {
+  --m3e-filled-card-container-color: color-mix(in srgb, var(--md-sys-color-tertiary-container, var(--app-selected)) 36%, var(--md-sys-color-surface-container, var(--app-surface)));
+}
+
+.metric {
+  min-height: 112px;
+  display: grid;
+  gap: 8px;
+  position: relative;
+}
+
+.metric > .state {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.metric strong {
+  font-size: 2.25rem;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.content-grid {
+  display: grid;
+  gap: 16px;
+}
+

@@ -1,0 +1,101 @@
+/* appbar.css —— 顶栏：搜索、筛选入口、账号、快捷工具条。
+   从原来的 styles.css 按原顺序切分（461-558 行）；由 styles.css 按同样顺序 @import，
+   顺序不可调整：这些分片共享同一条级联。 */
+.page-appbar {
+  position: sticky;
+  top: 0;
+  margin: -16px -24px 0;
+  z-index: 4;
+  --m3e-app-bar-container-color: color-mix(in srgb, var(--app-bg) 78%, var(--app-surface));
+  --m3e-app-bar-container-color-on-scroll: var(--md-sys-color-surface-container, var(--app-surface));
+  --m3e-app-bar-padding-left: 24px;
+  --m3e-app-bar-padding-right: 24px;
+  --m3e-app-bar-small-container-height: 72px;
+}
+
+.appbar-trailing {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 1 1 auto;
+  gap: 12px;
+}
+
+.appbar-create,
+.appbar-filter {
+  flex: 0 0 auto;
+  --m3e-button-container-height: 44px;
+  --m3e-button-label-text-font-size: .88rem;
+}
+
+.appbar-filter { position: relative; }
+.filter-count { margin-inline-start: 4px; font-size: .75rem; font-weight: 700; }
+
+.search {
+  width: clamp(260px, 34vw, 520px);
+  min-width: 0;
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  border-radius: var(--app-shape-field);
+  padding: 0 20px;
+  color: var(--md-sys-color-on-surface-variant, var(--app-muted));
+  background: var(--md-sys-color-surface-container-high, var(--app-surface-high));
+  transition: background var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+.search:focus-within {
+  background: var(--md-sys-color-surface-container-highest, var(--app-surface-high));
+  box-shadow: var(--app-focus-shadow);
+}
+
+.quick-toolbar {
+  --m3e-toolbar-size: 48px;
+  --m3e-toolbar-spacing: 2px;
+  --m3e-toolbar-rounded-padding: 4px;
+  --m3e-toolbar-rounded-shape: 28px;
+  --m3e-toolbar-standard-container-color: var(--md-sys-color-surface-container, var(--app-surface));
+}
+
+.account {
+  min-width: 0;
+  max-width: 230px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 4px 10px 4px 4px;
+  border-radius: var(--app-shape-card);
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-high, var(--app-surface-high)) 72%, transparent);
+}
+
+.account > span {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--app-shape-card);
+  display: grid;
+  place-items: center;
+  color: var(--md-sys-color-on-primary, #fff);
+  background: var(--md-sys-color-primary, var(--app-primary));
+  font-weight: 700;
+}
+
+.account strong,
+.account small {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account small,
+.card-head p,
+.metric p,
+.metric small,
+.row-title small {
+  color: var(--md-sys-color-on-surface-variant, var(--app-muted));
+}
+
