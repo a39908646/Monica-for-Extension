@@ -119,6 +119,22 @@ function queueDetail(): string {
   return tr('队列已清空');
 }
 
+/**
+ * 冲突卡上标出本地是否有未同步改动：否则「浏览器中也有未同步修改」这句只能靠猜，
+ * 用户无法判断本地改动是真的还是扩展自己标的。
+ */
+function localChangeLabel(conflict: ProviderConflictSummary): string {
+  const local = conflict.local?.updatedAt;
+  const synced = conflict.local?.syncedRevision;
+  if (!local || !synced) return "";
+  if (local === synced) return tr('本地无未同步改动');
+  const format = (value: string) => {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? tr('时间不可用') : parsed.toLocaleString(locale.value);
+  };
+  return tr('本地最后修改 {0} · 最后同步版本 {1}', { 0: format(local), 1: format(synced) });
+}
+
 function conflictSides(conflict: ProviderConflictSummary): string {
   // 写回被服务器拒绝不是内容分叉：本地镜像与远端本来都有一份，
   // 用「两个版本都存在」描述会让用户以为是自己存了两条。
@@ -183,7 +199,7 @@ function toggleConflicts() {
         <div class="bitwarden-conflict-heading"><div><strong>{{ tr('同步冲突') }}</strong><p>{{ tr('选择一个明确版本；敏感字段不会在此处显示。') }}</p></div><span class="state state-conflict">{{ tr('{0} 个', { 0: conflicts.length }) }}</span></div>
         <div class="bitwarden-conflict-list">
           <article v-for="conflict in visibleConflicts" :key="conflict.id" class="provider-conflict">
-            <div class="bitwarden-conflict-copy"><strong>{{ conflict.local?.title || conflict.remote?.title || tr('密码源级冲突') }}</strong><p>{{ conflict.reason }}</p><small>{{ tr('{0} · 检测于 {1}', { 0: conflictSides(conflict), 1: new Date(conflict.detectedAt).toLocaleString(locale) }) }}</small></div>
+            <div class="bitwarden-conflict-copy"><strong>{{ conflict.local?.title || conflict.remote?.title || tr('密码源级冲突') }}</strong><p>{{ conflict.reason }}</p><small>{{ tr('{0} · 检测于 {1}', { 0: conflictSides(conflict), 1: new Date(conflict.detectedAt).toLocaleString(locale) }) }}</small><small v-if="localChangeLabel(conflict)">{{ localChangeLabel(conflict) }}</small></div>
             <div v-if="conflict.local || conflict.remote" class="conflict-actions">
               <m3e-button v-if="conflict.local" variant="tonal" type="button" :disabled="busy || activeSync" @click="emit('resolveConflict', conflict, 'keep-local')">{{ tr('保留浏览器版本') }}</m3e-button>
               <m3e-button variant="text" type="button" :disabled="busy || activeSync" @click="emit('resolveConflict', conflict, 'use-remote')">{{ conflict.remote ? tr('采用 Bitwarden 版本') : tr('接受远端删除') }}</m3e-button>

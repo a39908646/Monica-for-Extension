@@ -377,7 +377,7 @@ export interface ProviderConflictSummary {
   id: string;
   providerId: string;
   reason: string;
-  local?: { title: string };
+  local?: { title: string; updatedAt?: string; syncedRevision?: string };
   remote?: { title: string };
   writeRejected?: boolean;
   detectedAt: string;

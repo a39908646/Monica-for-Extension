@@ -272,7 +272,7 @@ export async function encodeBitwardenCipher(item: VaultItem, encryptionKey: Bitw
         uri: await encryptBitwardenString(rule.uri, encryptionKey),
         match: bitwardenMatchCode(rule.matchType)
       })));
-      login.fido2Credentials = login.fido2Credentials ?? null;
+      login.fido2Credentials = withValidFido2CreationDates(login.fido2Credentials, dateValue(value(preserved, "CreationDate", "creationDate"), item.createdAt));
       base.login = login;
       base.fields = await mergeCipherFieldsPreservingUnknown(item, arrayValue(preserved, "Fields", "fields"), encryptionKey);
     }
@@ -716,6 +716,8 @@ export async function encodeBitwardenPasskeyCipher(
   const replacement = operation === "upsert" ? await encodeFido2Credential(item, encryptionKey, matched.find((entry) => entry.credentialId === itemCredentialId)?.credential) : undefined;
   const fido2Credentials = matched.flatMap((entry) => entry.credentialId === itemCredentialId ? (replacement ? [replacement] : []) : [entry.credential]);
   if (replacement && !matched.some((entry) => entry.credentialId === itemCredentialId)) fido2Credentials.push(replacement);
+  // 保留的兄弟凭据同样要规范创建时间，否则一次 Passkey 写入会连带整条密码被拒。
+  const normalizedCredentials = withValidFido2CreationDates(fido2Credentials, item.createdAt);
 
   if (!preservedRaw) {
     return {
@@ -733,7 +735,7 @@ export async function encodeBitwardenPasskeyCipher(
         password: null,
         totp: null,
         uris: [{ uri: await encryptBitwardenString(`https://${item.rpId}`, encryptionKey), match: null }],
-        fido2Credentials
+        fido2Credentials: normalizedCredentials
       }
     };
   }
@@ -757,7 +759,7 @@ export async function encodeBitwardenPasskeyCipher(
   login.uris = value(preservedLogin, "Uris", "uris") ?? [];
   login.passwordRevisionDate = value(preservedLogin, "PasswordRevisionDate", "passwordRevisionDate") ?? null;
   login.autofillOnPageLoad = value(preservedLogin, "AutofillOnPageLoad", "autofillOnPageLoad") ?? null;
-  login.fido2Credentials = fido2Credentials;
+  login.fido2Credentials = normalizedCredentials;
   base.login = login;
   return base;
 }
@@ -780,13 +782,41 @@ async function encodeFido2Credential(item: PasskeyItem, key: BitwardenSymmetricK
     userName: await encryptBitwardenString(item.userName, key),
     userDisplayName: await encryptBitwardenString(item.userDisplayName, key),
     discoverable: await encryptBitwardenString(String(item.discoverable), key),
-    creationDate: await encryptBitwardenString(item.createdAt, key)
+    // 服务器把该字段当 DateTime 绑定：必须明文 ISO，加密后回写会被 400 拒绝。
+    creationDate: new Date(dateValue(item.createdAt)).toISOString()
   };
 }
 
 const FIDO2_FIELD_NAMES = new Set([
   "credentialid", "keytype", "keyalgorithm", "keycurve", "keyvalue", "rpid", "rpname", "counter", "userhandle", "username", "userdisplayname", "discoverable", "creationdate"
 ]);
+
+function isDateTimeString(value: unknown): value is string {
+  return typeof value === "string" && value.trim() !== "" && !Number.isNaN(Date.parse(value));
+}
+
+/**
+ * Bitwarden 的 FIDO2 写入模型把 creationDate 声明为非空 DateTime，但读取模型可能给出 null、
+ * 密文或其它无法转换的值。原样回传会让整次写入被服务器拒绝
+ * （HTTP 400“The JSON value could not be converted to System.DateTime”），
+ * 所以写入前统一换成合法 ISO 时间：取不到就用凭据已知的创建时间兜底。
+ */
+function withValidFido2CreationDate(credential: Record<string, unknown>, fallback: string): Record<string, unknown> {
+  for (const name of ["CreationDate", "creationDate"]) {
+    if (!Object.prototype.hasOwnProperty.call(credential, name)) continue;
+    if (isDateTimeString(credential[name])) return credential;
+    return { ...credential, [name]: new Date(fallback).toISOString() };
+  }
+  // 服务器根本没给这个字段：绑定会用默认值，不需要补。
+  return credential;
+}
+
+function withValidFido2CreationDates(credentials: unknown, fallback: string): unknown {
+  if (!Array.isArray(credentials)) return credentials ?? null;
+  return credentials.map((entry) => entry && typeof entry === "object" && !Array.isArray(entry)
+    ? withValidFido2CreationDate(entry as Record<string, unknown>, fallback)
+    : entry);
+}
 
 function bitwardenType(item: VaultItem): number {
   if (item.kind === "login") return 1;

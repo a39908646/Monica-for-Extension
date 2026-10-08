@@ -7,6 +7,7 @@ import "@m3e/web/icon";
 import "@m3e/web/icon-button";
 import LanguagePicker from "../components/LanguagePicker.vue";
 import ListPagination from "../components/ListPagination.vue";
+import { vaultItemNote } from "./vault-item-note";
 import { useListPagination } from "../lib/list-pagination";
 import { computed, onMounted, onUnmounted, ref, shallowRef } from "vue";
 import { normalizeHost } from "../core/matching";
@@ -54,6 +55,7 @@ const allLogins = shallowRef<LoginMatchSummary[]>([]);
 const search = ref("");
 const pageUnsupported = ref(false);
 const currentFieldBlocked = ref(false);
+const pendingSiteFill = ref<{ item: LoginMatchSummary; origin: string } | null>(null);
 const fieldPolicyBusy = ref(false);
 let initializeRevision = 0;
 let matchRevision = 0;
@@ -272,14 +274,33 @@ function walletIcon(kind: WalletFillKind) {
   return ({ identity: "badge", "billing-address": "home_pin", card: "credit_card", "payment-account": "account_balance" } as const)[kind];
 }
 
-async function fill(item: LoginMatchSummary) {
+/**
+ * 「全部登录项 / 搜索结果」里的条目按构造都不匹配当前网站，直接填充必然被网址匹配拦下。
+ * 所以先让用户确认：确认后才跨过这道闸，并把当前站点的 origin 写进该条目。
+ */
+function requestSiteFill(item: LoginMatchSummary) {
+  if (!canFill.value) return;
+  status.value = "";
+  pendingSiteFill.value = { item, origin: scan.value?.origin || "" };
+}
+
+async function confirmSiteFill() {
+  const pending = pendingSiteFill.value;
+  pendingSiteFill.value = null;
+  if (pending) await fill(pending.item, true);
+}
+
+async function fill(item: LoginMatchSummary, allowSiteMismatch = false) {
   if (!tabId.value) return;
   fillingId.value = item.id;
   status.value = "";
   try {
-    const result = await vaultClient.fillLogin(item.id, tabId.value, selectedFrameId.value, scan.value?.documentId, scan.value?.origin);
+    const result = await vaultClient.fillLogin(item.id, tabId.value, selectedFrameId.value, scan.value?.documentId, scan.value?.origin, allowSiteMismatch);
     const fields = [result.filledUsername && tr('用户名'), result.filledPassword && tr('密码'), result.filledTotp && tr('验证码')].filter(Boolean).join("、");
-    status.value = tr('已填充 {0}{1}', { 0: item.title, 1: fields ? `（${fields}）` : "" });
+    const remembered = result.siteUriAdded ? ` · ${tr('已把 {0} 加入该条目', { 0: scan.value?.origin || "" })}` : "";
+    status.value = `${tr('已填充 {0}{1}', { 0: item.title, 1: fields ? `（${fields}）` : "" })}${remembered}`;
+    // 记住网址后该条目已经能匹配这个网站：刷新列表，让它从「全部登录项」移到「匹配的登录项」。
+    if (result.siteUriAdded) await loadMatches();
   } catch (cause) {
     status.value = errorMessage(cause, tr('填充失败，请刷新网页后重试。'));
   } finally {
@@ -363,12 +384,13 @@ function isSensitivePageAllowed(raw: string): boolean {
           </div>
         </div><ListPagination :page="matchPagination.page.value" :total="visibleMatches.length" :page-size="20" target="popup-matches" @change="matchPagination.change" /></section>
         <section v-if="!currentFieldBlocked && filteredLogins.length" id="popup-login-results" tabindex="-1" class="match-section"><div class="section-title"><h2>{{ search.trim() ? tr('搜索结果') : tr('全部登录项') }}</h2><span>{{ filteredLogins.length }}</span></div><div class="match-list">
-          <div v-for="item in loginPagination.slice(filteredLogins)" :key="item.id" class="credential-card login-row">
-            <button class="login-row-main" type="button" :disabled="Boolean(fillingId) || !canFill" :title="canFill ? tr('填充到当前页面') : tr('当前页面不可填充，可用右侧复制')" @click="fill(item)"><span class="credential-icon"><m3e-icon :name="item.favorite ? 'star' : 'key'"></m3e-icon></span><span class="credential-copy"><strong>{{ item.title }}</strong><small>{{ item.username || tr('无用户名') }}{{ item.hasTotp ? tr(' · 含验证码') : '' }}</small></span></button>
+          <div v-for="item in loginPagination.slice(filteredLogins)" :key="item.id" class="credential-card login-row" :class="{ 'login-row-confirming': pendingSiteFill?.item.id === item.id }">
+            <button class="login-row-main" type="button" :disabled="Boolean(fillingId) || !canFill" :title="canFill ? tr('填充到当前页面') : tr('当前页面不可填充，可用右侧复制')" @click="requestSiteFill(item)"><span class="credential-icon"><m3e-icon :name="item.favorite ? 'star' : 'key'"></m3e-icon></span><span class="credential-copy"><strong>{{ item.title }}</strong><small>{{ item.username || tr('无用户名') }}{{ item.hasTotp ? tr(' · 含验证码') : '' }}</small><small class="match-note">{{ vaultItemNote(item) }}</small></span></button>
             <span class="row-actions">
               <m3e-icon-button :aria-label="tr('复制用户名')" :title="tr('复制用户名')" @click="copyLoginSecret(item, 'username')"><m3e-icon name="content_copy"></m3e-icon></m3e-icon-button>
               <m3e-icon-button :aria-label="tr('复制密码')" :title="tr('复制密码')" @click="copyLoginSecret(item, 'password')"><m3e-icon name="key"></m3e-icon></m3e-icon-button>
             </span>
+            <div v-if="pendingSiteFill?.item.id === item.id" class="field-policy-row site-confirm-row"><span><m3e-icon name="link"></m3e-icon><span><small>{{ tr('填充后会把 {0} 加入该条目，之后自动匹配。', { 0: pendingSiteFill.origin }) }}</small></span></span><button type="button" :disabled="Boolean(fillingId)" @click="confirmSiteFill">{{ tr('确认填充并记住') }}</button></div>
           </div>
         </div><ListPagination :page="loginPagination.page.value" :total="filteredLogins.length" :page-size="20" target="popup-login-results" @change="loginPagination.change" /></section>
 

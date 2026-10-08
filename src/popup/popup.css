@@ -530,6 +530,20 @@ body.popup-body {
   white-space: nowrap;
 }
 
+/* 卡片下方展开的「不匹配 → 仍然填充并记住网址」确认条。 */
+.login-row-confirming { flex-wrap: wrap; }
+.site-confirm-row { flex: 1 0 100%; margin-top: 4px; }
+
+/* 「全部登录项」里的条目不匹配当前网站：说明原因，允许换行显示保存的网址。 */
+.credential-copy .match-note {
+  color: var(--app-muted);
+  font-size: .6875rem;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+
 .fill-action {
   display: inline-flex;
   align-items: center;

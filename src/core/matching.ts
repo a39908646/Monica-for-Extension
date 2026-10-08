@@ -31,9 +31,40 @@ export function matchingLogins(items: LoginItem[], pageUrl: string): LoginItem[]
     .map(({ item }) => item);
 }
 
-function effectiveUriRules(item: LoginItem): LoginUriRule[] {
+export function effectiveUriRules(item: LoginItem): LoginUriRule[] {
   if (item.uriRules?.length) return item.uriRules;
   return item.uris.map((uri) => ({ uri, matchType: "base-domain" }));
+}
+
+/**
+ * 用户在弹窗里明确确认「仍然填充并记住此网站」后使用：把当前站点的 origin 追加为该条目的匹配规则。
+ * origin 必须由后台从实际目标 frame 推导，不接受调用方传入，否则等于让调用方给自己授权。
+ * `uriRules` 是权威字段（匹配与编辑器都以它为准），`uris` 按编辑器的方式同步镜像。
+ */
+export function withLoginSiteUri<T extends LoginItem>(item: T, origin: string): T {
+  const uri = siteOrigin(origin);
+  if (!uri) return item;
+  const rules = effectiveUriRules(item);
+  const host = normalizeHost(uri);
+  const existing = rules.find((rule) => normalizeHost(rule.uri) === host);
+  if (existing && existing.matchType !== "never") return item;
+  // 同主机已有的「永不匹配」规则会被这条确认替换掉：否则管理页会同时显示两条互相矛盾的规则。
+  const uriRules: LoginUriRule[] = existing
+    ? rules.map((rule) => (rule === existing ? { uri, matchType: "base-domain" as const } : rule))
+    : [...rules, { uri, matchType: "base-domain" }];
+  return { ...item, uriRules, uris: uriRules.map((rule) => rule.uri) };
+}
+
+/** 只接受 http/https 的 origin，路径、查询串与伪协议一律归一化掉或拒绝。 */
+function siteOrigin(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+    if (url.username || url.password) return undefined;
+    return url.origin;
+  } catch {
+    return undefined;
+  }
 }
 
 function uriRuleMatchScore(rule: LoginUriRule, page: URL): number {

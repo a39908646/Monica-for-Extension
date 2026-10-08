@@ -948,20 +948,50 @@ function bitwardenLoginHttpMessage(prefix: string, status: number, body: Record<
  */
 function bitwardenRejectionDetail(body: Record<string, unknown>): string | undefined {
   const errorModel = recordValue(body, "ErrorModel", "errorModel") || {};
-  const validation = recordValue(errorModel, "ValidationErrors", "validationErrors")
-    || recordValue(body, "ValidationErrors", "validationErrors")
-    || recordValue(body, "errors", "Errors");
-  if (!validation) return undefined;
-  const names = Object.keys(validation);
-  const fields = names.filter(isRejectableFieldName).slice(0, MAX_REJECTED_FIELDS);
-  if (!fields.length) return undefined;
-  const unrecognized = names.length - fields.length;
-  return `被拒字段：${fields.join("、")}${unrecognized > 0 ? `（另有 ${unrecognized} 个未识别字段）` : ""}。`;
+  const validation = validationEntries(errorModel) ?? validationEntries(body);
+  if (validation && validation.count > 0) {
+    const fields = validation.names.filter(isRejectableFieldName).map(boundedFieldName).slice(0, MAX_REJECTED_FIELDS);
+    if (fields.length) {
+      const unrecognized = validation.count - fields.length;
+      return `被拒字段：${fields.join("、")}${unrecognized > 0 ? `（另有 ${unrecognized} 个未识别字段）` : ""}。`;
+    }
+    // 服务器确实给了字段级错误，只是键名不在已知模型里：至少让用户知道不是「什么都没说」。
+    return `服务器返回了 ${validation.count} 个未识别的字段级错误。`;
+  }
+  return undefined;
+}
+
+/** 校验错误可能是对象（字段 → 消息）或数组；数组拿不到字段名，只计数。 */
+function validationEntries(source: Record<string, unknown>): { names: string[]; count: number } | undefined {
+  for (const key of ["ValidationErrors", "validationErrors", "errors", "Errors"]) {
+    const value = source[key];
+    if (Array.isArray(value)) return { names: [], count: value.length };
+    if (value && typeof value === "object") {
+      const names = Object.keys(value);
+      return { names, count: names.length };
+    }
+  }
+  return undefined;
 }
 
 /** 未列入 Bitwarden 模型路径的键一律不展示：服务器的键名同样属于不可信内容。 */
 function isRejectableFieldName(field: string): boolean {
-  return REJECTED_FIELD_NAMES.has(field.replace(/\[\d+\]/g, "").toLocaleLowerCase("en-US"));
+  const normalized = normalizedFieldName(field);
+  if (!normalized) return false;
+  for (const known of REJECTED_FIELD_NAMES) {
+    if (normalized === known || normalized.startsWith(`${known}.`)) return true;
+  }
+  return false;
+}
+
+/** 服务器的校验键可能是 JSONPath（`$.login.fido2Credentials[0].creationDate`），先去壳再匹配模型路径。 */
+function normalizedFieldName(field: string): string {
+  return field.trim().replace(/^\$(\.)?/, "").replace(/\[\d+\]/g, "").toLocaleLowerCase("en-US");
+}
+
+function boundedFieldName(field: string): string {
+  const trimmed = field.trim().slice(0, 96);
+  return /[\u0000-\u001f\u007f]/.test(trimmed) ? "（未显示）" : trimmed;
 }
 
 function isLoopbackHost(hostname: string): boolean {

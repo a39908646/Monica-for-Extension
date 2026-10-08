@@ -51,6 +51,30 @@ describe("wallet DOM filling", () => {
     expect(fillWallet({ kind: "card", fields: { cardNumber: "4111111111111111", cardSecurityCode: "123" } }, dom.window.document)).toMatchObject({ ok: false, filledCount: 0 });
   });
 
+  it("does not treat a login form's account field as identity, address or payment data", () => {
+    const dom = page('<form id="login_form"><input id="email" autocomplete="email"><input id="passwd" type="password"><button type="submit">登录</button></form>');
+    // 登录表单的邮箱框带着 autocomplete="email"：以前会被当成证件/地址/支付字段，
+    // 导致任何登录页都在弹窗里显示无关的「证件与支付方式」。
+    expect(scanWalletKinds(dom.window.document)).toEqual([]);
+    expect(fillWallet({ kind: "identity", fields: { email: "joy@example.com" } }, dom.window.document)).toMatchObject({ ok: false, filledCount: 0 });
+    expect(dom.window.document.querySelector<HTMLInputElement>("#email")!.value).toBe("");
+  });
+
+  it("keeps scanning identity fields on a form without a password", () => {
+    const dom = page('<form id="profile"><input id="email" autocomplete="email"><input id="phone" autocomplete="tel"></form>');
+    expect(scanWalletKinds(dom.window.document)).toEqual(["identity", "billing-address", "payment-account"]);
+    expect(fillWallet({ kind: "identity", fields: { email: "joy@example.com", phone: "13800000000" } }, dom.window.document)).toMatchObject({ ok: true, filledCount: 2 });
+  });
+
+  it("excludes only the login form when the page also carries a wallet form", () => {
+    const dom = page('<form id="login"><input id="email" autocomplete="email"><input id="passwd" type="password"></form><form id="identity"><input id="full_name" autocomplete="name"><input id="contact_email" autocomplete="email"></form>');
+    expect(scanWalletKinds(dom.window.document)).toEqual(["identity", "billing-address", "payment-account"]);
+    expect(fillWallet({ kind: "identity", fields: { fullName: "Joy Lin", email: "joy@example.com" } }, dom.window.document)).toMatchObject({ ok: true, filledCount: 2 });
+    expect(dom.window.document.querySelector<HTMLInputElement>("#email")!.value).toBe("");
+    expect(dom.window.document.querySelector<HTMLInputElement>("#full_name")!.value).toBe("Joy Lin");
+    expect(dom.window.document.querySelector<HTMLInputElement>("#contact_email")!.value).toBe("joy@example.com");
+  });
+
   it("recognizes Android-derived Chinese card labels", () => {
     const dom = page('<label>持卡人姓名<input></label><label>银行卡号<input></label><label>信用卡有效期<input></label><label>信用卡安全码<input></label>');
     expect(scanWalletKinds(dom.window.document)).toEqual(["card"]);

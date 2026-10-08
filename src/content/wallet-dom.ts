@@ -1,5 +1,6 @@
 import type { WalletFieldName, WalletFillKind, WalletFillPayload, WalletFillResult } from "../runtime/messages";
 import { elementByIdInRoot, queryComposedAll } from "./composed-dom";
+import { loginFieldRole, loginFieldScope } from "./login-field-role";
 
 type WalletControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
@@ -106,10 +107,26 @@ export function fillWallet(payload: WalletFillPayload, rootDocument: Document = 
 
 function findWalletFields(rootDocument: Document): WalletField[] {
   return queryComposedAll<WalletControl>(rootDocument, "input,select,textarea").flatMap((element) => {
-    if (!visibleControl(element)) return [];
+    if (!visibleControl(element) || isLoginCredentialInput(element)) return [];
     const name = walletFieldName(element);
     return name ? [{ element, name, kinds: FIELD_KINDS[name] }] : [];
   });
+}
+
+/**
+ * 登录表单里的账号框（邮箱/手机号）既会被 autocomplete="email" 命中钱包字段表，也会被名字启发式命中，
+ * 于是任何登录页都会在弹窗里冒出「证件与支付方式」，站点卡还会显示误导性的「可选择填充」。
+ * 这类字段由登录填充负责。只在作用域确实是表单或语义容器、且其中存在密码框时才排除，
+ * 以免误伤同页真正的证件、地址或支付表单（没有表单、退回整个文档时一律不排除）。
+ */
+function isLoginCredentialInput(element: WalletControl): boolean {
+  const view = element.ownerDocument.defaultView;
+  if (!view || !(element instanceof view.HTMLInputElement)) return false;
+  if (loginFieldRole(element) !== "username") return false;
+  const scope = loginFieldScope(element);
+  const document = element.ownerDocument;
+  if (scope === document || scope === document.body) return false;
+  return Boolean(scope.querySelector('input[type="password"]'));
 }
 
 export function walletFieldName(element: WalletControl): WalletFieldName | undefined {

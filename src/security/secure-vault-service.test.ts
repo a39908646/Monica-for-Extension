@@ -1182,3 +1182,41 @@ class CountingMemoryVaultStorage extends MemoryVaultStorage {
     await super.write(envelope);
   }
 }
+
+describe("provider remote removals", () => {
+  async function syncedLogin(): Promise<{ service: SecureVaultService; synced: LoginItem }> {
+    const service = new SecureVaultService(new MemoryVaultStorage(), new MemoryVaultSessionStore());
+    await service.setup("remote removal password");
+    await service.upsertProvider({ id: "bw", kind: "bitwarden", name: "Bitwarden", enabled: true, isDefaultSaveTarget: false, config: {} });
+    const synced: LoginItem = {
+      ...createLoginItem({ title: "telegram", username: "u", password: "p", uris: ["https://telegram.org"] }),
+      id: "bw-item",
+      updatedAt: REVISION_FOR_PASSKEY_TEST,
+      providerRefs: [{ providerId: "bw", remoteId: "cipher-1", revision: REVISION_FOR_PASSKEY_TEST }]
+    };
+    await service.applyProviderSync("bw", [synced]);
+    return { service, synced };
+  }
+
+  it("follows a remote removal when the local copy has no unsynced change", async () => {
+    const { service } = await syncedLogin();
+    const before = await service.listItems();
+
+    // provider 处理远端删除后：未改动的本地条目不会出现在结果里，服务层直接跟随删除。
+    const result = await service.applyProviderSync("bw", [], undefined, [], undefined, before, [], [], false);
+
+    expect(result).toMatchObject({ conflicts: 0 });
+    expect(await service.listItems()).toEqual([]);
+  });
+
+  it("keeps the local copy and a conflict when it carries an unsynced change", async () => {
+    const { service, synced } = await syncedLogin();
+    await service.upsertItem({ ...synced, password: "edited" });
+    const before = await service.listItems();
+
+    const result = await service.applyProviderSync("bw", [], undefined, [], undefined, before, [], [], false);
+
+    expect(result).toMatchObject({ conflicts: 1 });
+    expect((await service.listItems()).map((item) => item.id)).toEqual(["bw-item"]);
+  });
+});

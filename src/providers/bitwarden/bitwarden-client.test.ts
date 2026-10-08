@@ -450,6 +450,15 @@ describe("Bitwarden write rejection messages", () => {
     // 只列可识别的模型字段并限制数量，未识别的（Collections）只计数；服务器回显的消息不进文案。
     expect(error).toBe("更新 Bitwarden 项目失败（HTTP 400）：被拒字段：Name、login.uri、FolderId、Type、Notes、Fields（另有 1 个未识别字段）。");
     expect(error).not.toContain("The model state is invalid.");
+
+    // 官方服务器用小写 validationErrors + JSONPath 键名（真实出现过的那条），也要能识别出来。
+    const pathFetcher = vi.fn(async () => json({
+      object: "error",
+      message: "The model state is invalid.",
+      validationErrors: { "$.login.fido2Credentials[0].creationDate": ["The JSON value could not be converted to System.DateTime."] }
+    }, 400)) as unknown as typeof fetch;
+    expect(await rejectionMessage(new BitwardenClient(pathFetcher, fastTransport()).updateCipher(activeSession(), "cipher-1", { type: 1 })))
+      .toBe("更新 Bitwarden 项目失败（HTTP 400）：被拒字段：$.login.fido2Credentials[0].creationDate。");
   });
 
   it("never echoes server body content and keeps transient failures free of detail", async () => {
@@ -469,6 +478,24 @@ describe("Bitwarden write rejection messages", () => {
     expect(await rejectionMessage(new BitwardenClient(emptyFetcher, fastTransport()).updateCipher(activeSession(), "cipher-1", { type: 1 })))
       .toBe("更新 Bitwarden 项目失败（HTTP 400）。");
   });
+
+  it("counts unrecognized validation entries instead of silently dropping them", async () => {
+    // 数组形式的校验错误拿不到字段名，只报数量。
+    const arrayFetcher = vi.fn(async () => json({ errors: [{ code: "invalid" }, { code: "missing" }] }, 400)) as unknown as typeof fetch;
+    expect(await rejectionMessage(new BitwardenClient(arrayFetcher, fastTransport()).updateCipher(activeSession(), "cipher-1", { type: 1 })))
+      .toBe("更新 Bitwarden 项目失败（HTTP 400）：服务器返回了 2 个未识别的字段级错误。");
+
+    // 键名不在已知模型里的对象同样只计数。
+    const unknownFetcher = vi.fn(async () => json({ ValidationErrors: { "custom.thing": ["x"] } }, 400)) as unknown as typeof fetch;
+    expect(await rejectionMessage(new BitwardenClient(unknownFetcher, fastTransport()).updateCipher(activeSession(), "cipher-1", { type: 1 })))
+      .toBe("更新 Bitwarden 项目失败（HTTP 400）：服务器返回了 1 个未识别的字段级错误。");
+
+    // 只有消息、没有字段级信息时仍然什么都不带：错误文案不包含服务器回显内容。
+    const messageFetcher = vi.fn(async () => json({ Message: "The model state is invalid." }, 400)) as unknown as typeof fetch;
+    expect(await rejectionMessage(new BitwardenClient(messageFetcher, fastTransport()).updateCipher(activeSession(), "cipher-1", { type: 1 })))
+      .toBe("更新 Bitwarden 项目失败（HTTP 400）。");
+  });
+
 });
 
 /** 取回被拒操作的错误文案；断言的是完整字符串，所以不用 rejects.toThrow 的子串匹配。 */

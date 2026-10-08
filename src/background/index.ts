@@ -1,7 +1,7 @@
 import { isLoginItem, createLoginItem, type BillingAddressItem, type CardItem, type IdentityItem, type LoginItem, type PasskeyItem, type PaymentAccountItem, type ProviderAccount, type ProviderConflict, type ProviderConflictSummary, type TotpItem, type VaultItem } from "../core/model";
 import { isUnchangedCredentialCapture } from "../core/credential-capture-policy";
 import { withoutContentBlockFields } from "../core/password-content-blocks";
-import { loginMatchScore, matchingLogins } from "../core/matching";
+import { loginMatchScore, matchingLogins, withLoginSiteUri } from "../core/matching";
 import { readInlineAutofillEnabled } from "../autofill/inline-preferences";
 import { assertInlineSessionId, INLINE_SUGGESTION_LIMIT, type InlineAutofillResult } from "../autofill/inline-contract";
 import { resolveLoginOtp } from "../core/login-otp";
@@ -588,7 +588,7 @@ async function handleRequest(request: ExtensionRequest, sender: chrome.runtime.M
     }
     case "VAULT_FILL_LOGIN": {
       assertExtensionPage(sender);
-      return fillLogin(request.itemId, request.tabId, request.frameId, request.documentId, request.expectedOrigin);
+      return fillLogin(request.itemId, request.tabId, request.frameId, request.documentId, request.expectedOrigin, undefined, request.allowSiteMismatch === true);
     }
     case "VAULT_LIST_WALLET_ITEMS": {
       assertExtensionPage(sender);
@@ -3066,7 +3066,12 @@ async function queryInlineAutofill(sender: chrome.runtime.MessageSender, session
   return service.dispatchAutofill(context, () => Promise.resolve(result));
 }
 
-async function fillLogin(itemId: string, tabId: number, frameId?: number, documentId?: string, expectedOrigin?: string, inlineSessionId?: string) {
+/**
+ * `allowSiteMismatch` 只允许在用户于弹窗里明确确认「仍然填充并记住此网站」时置位：
+ * 它跳过网址匹配这一道闸，其余防线（敏感页、站点屏蔽、字段排除、expectedOrigin）照旧，
+ * 并在填充成功后把当前站点的 origin 写入该条目。origin 取自实际目标 frame，调用方无法指定。
+ */
+async function fillLogin(itemId: string, tabId: number, frameId?: number, documentId?: string, expectedOrigin?: string, inlineSessionId?: string, allowSiteMismatch = false) {
   if (inlineSessionId && !await readInlineAutofillEnabled()) throw new Error("自动填充菜单已失效，请重新选择输入框。");
   const target = await resolveSensitiveFillTarget(tabId, frameId ?? 0, documentId, expectedOrigin);
   const context = await service.readAutofillContext();
@@ -3074,7 +3079,8 @@ async function fillLogin(itemId: string, tabId: number, frameId?: number, docume
   const field = await assertCurrentFieldAllowed(tabId, target, context.blockedFieldSignatures, inlineSessionId);
   const item = context.items.find((candidate) => candidate.id === itemId);
   if (!item || !isLoginItem(item) || item.deletedAt || item.archivedAt) throw new Error("登录项不存在、已归档或已被删除。");
-  if (loginMatchScore(item, target.url) <= 0) throw new Error("登录项与目标页面不匹配，已阻止填充。");
+  const matchesPage = loginMatchScore(item, target.url) > 0;
+  if (!matchesPage && !allowSiteMismatch) throw new Error("登录项与目标页面不匹配，已阻止填充。");
   const otp = context.locked ? undefined : await resolveLoginOtp(item, context.items);
   if (inlineSessionId && !await readInlineAutofillEnabled()) throw new Error("自动填充菜单已失效，请重新选择输入框。");
   const response = (await service.dispatchAutofill(context, () => chrome.tabs.sendMessage(tabId, {
@@ -3085,7 +3091,18 @@ async function fillLogin(itemId: string, tabId: number, frameId?: number, docume
   }, { documentId: target.documentId }))) as { ok?: boolean; error?: string; filledUsername?: boolean; filledPassword?: boolean; filledTotp?: boolean; filledCustomFields?: number };
   if (!response?.ok) throw new Error(response?.error || "网页拒绝了填充请求。");
   if (response.filledTotp && otp?.updatedItem) await service.upsertItem(otp.updatedItem);
-  return { filledUsername: Boolean(response.filledUsername), filledPassword: Boolean(response.filledPassword), filledTotp: Boolean(response.filledTotp), filledCustomFields: response.filledCustomFields || 0 };
+  // 记住网站只在填充成功后写；HOTP 计数器刚更新过，基于同一份最新条目派生，避免把它覆盖回去。
+  const otpLogin = otp?.updatedItem?.kind === "login" ? otp.updatedItem : undefined;
+  const siteUriAdded = !matchesPage && allowSiteMismatch ? await addLoginSiteUri(otpLogin || item, target.origin) : false;
+  return { filledUsername: Boolean(response.filledUsername), filledPassword: Boolean(response.filledPassword), filledTotp: Boolean(response.filledTotp), filledCustomFields: response.filledCustomFields || 0, siteUriAdded };
+}
+
+/** 返回是否真的写入了新规则：已存在等价规则时不会重复追加，也不会触发写回。 */
+async function addLoginSiteUri(item: LoginItem, origin: string): Promise<boolean> {
+  const updated = withLoginSiteUri(item, origin);
+  if (updated === item) return false;
+  await service.upsertItem(updated);
+  return true;
 }
 
 type WalletItem = IdentityItem | BillingAddressItem | CardItem | PaymentAccountItem;
@@ -3797,7 +3814,13 @@ function toProviderConflictSummary(conflict: ProviderConflict): ProviderConflict
     id: conflict.id,
     providerId: conflict.providerId,
     reason: redactProviderMessage(conflict.reason),
-    ...(conflict.local ? { local: { title: conflict.local.title } } : {}),
+    ...(conflict.local ? {
+      local: {
+        title: conflict.local.title,
+        updatedAt: conflict.local.updatedAt,
+        syncedRevision: conflict.local.providerRefs.find((reference) => reference.providerId === conflict.providerId)?.revision
+      }
+    } : {}),
     ...(conflict.remote ? { remote: { title: conflict.remote.title } } : {}),
     ...(conflict.writeRejected ? { writeRejected: true } : {}),
     detectedAt: conflict.detectedAt

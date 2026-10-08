@@ -247,6 +247,36 @@ describe("Bitwarden Cipher codec", () => {
     await expect(decryptBitwardenString((encoded.login as Record<string, string>).username, KEY)).resolves.toBe("user");
   });
 
+  it("replaces an unusable FIDO2 creation date instead of letting the server reject the write", async () => {
+    const preservedFido = [
+      { CredentialId: await encryptBitwardenString("one", KEY), CreationDate: null },
+      { CredentialId: await encryptBitwardenString("two", KEY), CreationDate: await encryptBitwardenString(REVISION, KEY) },
+      { CredentialId: await encryptBitwardenString("three", KEY), CreationDate: "not a date" }
+    ];
+    const item: LoginItem = {
+      id: "login",
+      kind: "login",
+      title: "Edited",
+      username: "user",
+      password: "pass",
+      uris: ["example.com"],
+      customFields: [],
+      favorite: false,
+      notes: "",
+      createdAt: REVISION,
+      updatedAt: REVISION,
+      providerRefs: []
+    };
+
+    const encoded = await encodeBitwardenCipher(item, KEY, { Key: null, CreationDate: REVISION, Login: { Fido2Credentials: preservedFido } });
+    const credentials = (encoded.login as Record<string, unknown>).fido2Credentials as Array<Record<string, unknown>>;
+
+    // 服务器把 creationDate 绑定成非空 DateTime：null、旧版本写成的密文、非法字符串都必须换成合法 ISO，
+    // 否则整次写入会被 400 拒绝（The JSON value could not be converted to System.DateTime）。
+    expect(credentials.map((credential) => credential.CreationDate)).toEqual([REVISION, REVISION, REVISION]);
+    await expect(decryptBitwardenString(String(credentials[0].CredentialId), KEY)).resolves.toBe("one");
+  });
+
   it("round-trips Secure Note custom fields without dropping unknown fields", async () => {
     const raw = {
       Id: "secure-note-fields",
@@ -819,6 +849,8 @@ describe("Bitwarden Cipher codec", () => {
     await expect(decryptBitwardenString(credential.keyType, KEY)).resolves.toBe("public-key");
     await expect(decryptBitwardenString(credential.keyCurve, KEY)).resolves.toBe("P-256");
     await expect(decryptBitwardenString(credential.keyValue, KEY)).resolves.toBe(P256_PKCS8.replace(/\+/g, "-").replace(/\//g, "_"));
+    // creationDate 是服务器绑定的 DateTime：必须明文 ISO，不能像其它字段那样加密。
+    expect(credential.creationDate).toBe(REVISION);
     const decoded = await decodeBitwardenCipher({ ...encoded, id: "created", revisionDate: REVISION, creationDate: REVISION }, "provider-1", KEY);
 
     expect(decoded.items).toHaveLength(2);

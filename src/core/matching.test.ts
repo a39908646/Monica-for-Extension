@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createLoginItem, type LoginUriRule } from "./model";
-import { loginMatchScore, matchingLogins, normalizeHost } from "./matching";
+import { loginMatchScore, matchingLogins, normalizeHost, withLoginSiteUri } from "./matching";
 
 describe("login URL matching", () => {
   it("normalizes full URLs and www prefixes", () => {
@@ -62,6 +62,38 @@ describe("login URL matching", () => {
       item.loginType = loginType;
       expect(loginMatchScore(item, "https://example.com/login")).toBe(0);
     }
+  });
+});
+
+describe("remembering the current website", () => {
+  it("appends the confirmed origin and mirrors it into uris", () => {
+    const item = login("Example", [{ uri: "https://other.example", matchType: "base-domain" }]);
+    const updated = withLoginSiteUri(item, "https://bbxy.buzz/v2/login?next=1");
+    expect(updated.uriRules).toEqual([
+      { uri: "https://other.example", matchType: "base-domain" },
+      { uri: "https://bbxy.buzz", matchType: "base-domain" }
+    ]);
+    expect(updated.uris).toEqual(["https://other.example", "https://bbxy.buzz"]);
+    expect(loginMatchScore(updated, "https://bbxy.buzz/v2/login")).toBe(100);
+  });
+
+  it("keeps the item untouched when an equivalent rule already exists", () => {
+    const item = login("Example", [{ uri: "https://bbxy.buzz", matchType: "base-domain" }]);
+    expect(withLoginSiteUri(item, "https://bbxy.buzz")).toBe(item);
+  });
+
+  it("replaces an explicit never rule for the same host instead of stacking two rules", () => {
+    const item = login("Example", [{ uri: "https://bbxy.buzz", matchType: "never" }]);
+    const updated = withLoginSiteUri(item, "https://bbxy.buzz");
+    expect(updated.uriRules).toEqual([{ uri: "https://bbxy.buzz", matchType: "base-domain" }]);
+    expect(loginMatchScore(updated, "https://bbxy.buzz")).toBe(100);
+  });
+
+  it("refuses values that are not http(s) origins", () => {
+    const item = login("Example", []);
+    expect(withLoginSiteUri(item, "chrome-extension://abcdefghijklmnop/page.html")).toBe(item);
+    expect(withLoginSiteUri(item, "javascript:void(0)")).toBe(item);
+    expect(withLoginSiteUri(item, "not a url")).toBe(item);
   });
 });
 

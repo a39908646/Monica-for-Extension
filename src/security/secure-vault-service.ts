@@ -1612,7 +1612,9 @@ function mergeProviderSyncItems(
       continue;
     }
     if (local && !local.deletedAt && !incoming) {
-      if (adoptRemoteRemovals && !localChanged) {
+      // 远端已经删掉了这个条目：本地没有未上传改动时直接跟随删除（与 Bitwarden 官方客户端一致），
+      // 只有本地确实有未上传改动（或同步期间被改）才让用户决定。空库确认流程仍然一律采用远端结果。
+      if (!localChanged && (adoptRemoteRemovals || !hasUnsyncedProviderChange(local, providerId))) {
         replacementById.set(id, undefined);
         continue;
       }
@@ -1635,6 +1637,17 @@ function mergeProviderSyncItems(
   });
   for (const item of remote) if (!currentById.has(item.id) && replacementById.get(item.id) === item) merged.push(item);
   return { items: merged, conflicts, locallyChangedIds, confirmedMutationIds };
+}
+
+/**
+ * 本地副本是否有未上传到该密码源的改动 —— 与 provider 的 itemChanged 同一判据。
+ * 没有远端版本号（本地新建、尚未上传）或本地已删除都算未上传改动，绝不静默删除。
+ */
+function hasUnsyncedProviderChange(item: VaultItem, providerId: string): boolean {
+  const reference = item.providerRefs.find((candidate) => candidate.providerId === providerId);
+  if (!reference) return false;
+  if (item.deletedAt) return true;
+  return !reference.revision || item.updatedAt !== reference.revision;
 }
 
 function isRemoteReferenceAcknowledgement(providerId: string, before: VaultItem, incoming: VaultItem): boolean {

@@ -284,7 +284,7 @@ export type ExtensionRequest =
   | { type: "VAULT_LIST_LOGIN_SUMMARIES" }
   | { type: "VAULT_LOGIN_SECRET"; itemId: string; field: "username" | "password" }
   | { type: "VAULT_MATCH_PASSKEYS"; pageUrl: string }
-  | { type: "VAULT_FILL_LOGIN"; itemId: string; tabId: number; frameId?: number; documentId?: string; expectedOrigin?: string }
+  | { type: "VAULT_FILL_LOGIN"; itemId: string; tabId: number; frameId?: number; documentId?: string; expectedOrigin?: string; allowSiteMismatch?: boolean }
   | { type: "VAULT_LIST_WALLET_ITEMS"; kinds: WalletFillKind[]; pageUrl: string; fieldSignature?: string }
   | { type: "VAULT_FILL_WALLET"; itemId: string; tabId: number; frameId?: number; documentId?: string; expectedOrigin?: string }
   | { type: "AUTOFILL_SITE_POLICY_GET" }
