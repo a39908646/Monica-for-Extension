@@ -1,0 +1,315 @@
+/* generator —— TOTP 单元格、密码生成器（面板/模式/选项/历史/SSH 结果）、OTP 迁移、≤560px。
+   从原来的 manager.css 按原顺序切分（1391-1702 行），导入顺序不可调整：
+   这些文件共享同一条级联，换顺序会改变同名选择器的胜负。 */
+.totp-code-cell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.totp-code-cell strong {
+  letter-spacing: 0.12em;
+}
+
+.totp-code-cell button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-radius: var(--app-shape-field);
+  padding: 0 10px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.totp-code-cell button m3e-icon {
+  font-size: 1rem;
+  flex: none;
+}
+
+.totp-code-cell button:disabled {
+  cursor: default;
+}
+
+.totp-code-cell .otp-copy-status:empty {
+  display: none;
+}
+
+.totp-code-cell button:hover,
+.totp-code-cell button:focus-visible {
+  background: var(--m3e-color-secondary-container, var(--app-selected));
+  outline: 0;
+}
+
+.totp-code-cell small {
+  color: var(--app-muted);
+}
+
+.generator-panel {
+  width: min(100%, 820px);
+  display: grid;
+  gap: 20px;
+}
+
+.generator-result {
+  min-height: 120px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
+  padding: 20px;
+  background: var(--m3e-color-surface-container, var(--app-surface));
+}
+
+.generator-result > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.generator-result span,
+.generator-result small,
+.generator-status {
+  color: var(--m3e-color-on-surface-variant, var(--app-muted));
+}
+
+.generator-result output {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 1.25rem;
+  line-height: 1.5;
+}
+
+.generator-result-actions,
+.generator-modes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.generator-modes {
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
+  padding: 4px;
+  background: var(--m3e-color-surface-container, var(--app-surface));
+}
+
+.generator-modes button {
+  min-width: 88px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 14px;
+  color: var(--m3e-color-on-surface-variant, var(--app-muted));
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+.generator-modes button.selected {
+  color: var(--m3e-color-on-secondary-container, var(--app-text));
+  background: var(--m3e-color-secondary-container, var(--app-selected));
+}
+
+.generator-modes m3e-icon { --m3e-icon-size: 20px; }
+
+.generator-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 16px;
+}
+
+.generator-options {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+  gap: 8px 16px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
+  padding: 12px 16px;
+}
+
+.generator-options legend { padding: 0 4px; font-weight: 600; }
+.generator-options label { min-height: 44px; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.generator-options input { width: 20px; height: 20px; accent-color: var(--app-primary); }
+.generator-form footer { display: flex; justify-content: flex-end; }
+
+.generator-min-input {
+  width: 5rem !important;
+  height: 2.75rem;
+  padding: 0 10px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
+  background: transparent;
+  color: inherit;
+}
+
+.generator-min-input:disabled { opacity: 0.5; }
+
+.generator-symbol-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.generator-symbol-chip {
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
+}
+
+.generator-symbol-chip span { min-width: 1.25rem; text-align: center; }
+
+.generator-ssh-result {
+  display: grid;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
+}
+
+.generator-ssh-facts { display: flex; flex-wrap: wrap; gap: 4px 24px; margin: 0; }
+.generator-ssh-facts div { display: flex; gap: 8px; align-items: baseline; }
+.generator-ssh-facts dt { font-weight: 600; }
+.generator-ssh-facts dd { margin: 0; }
+
+.generator-ssh-text {
+  width: 100%;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  padding: 8px 10px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
+  background: transparent;
+  color: inherit;
+  resize: vertical;
+}
+
+.generator-history {
+  border-block: 1px solid var(--app-outline);
+}
+
+.generator-history > summary {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.generator-history > summary::-webkit-details-marker { display: none; }
+.generator-history > summary > span:first-child { display: flex; align-items: center; gap: 10px; }
+.generator-history > summary m3e-icon { --m3e-icon-size: 20px; }
+
+.generator-history-count {
+  min-width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 14px;
+  color: var(--m3e-color-on-secondary-container, var(--app-text));
+  background: var(--m3e-color-secondary-container, var(--app-selected));
+  font-size: 0.8125rem;
+}
+
+.generator-history-body { display: grid; gap: 8px; padding: 0 0 8px; }
+.generator-history-toolbar { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--m3e-color-on-surface-variant, var(--app-muted)); font-size: 0.875rem; }
+.generator-history-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+
+.generator-history-list li {
+  min-width: 0;
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.8fr) minmax(12rem, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--app-outline);
+  padding: 6px 0;
+}
+
+.generator-history-main,
+.generator-history-meta { min-width: 0; display: grid; gap: 2px; }
+.generator-history-main code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9375rem; }
+.generator-history-main span,
+.generator-history-meta { color: var(--m3e-color-on-surface-variant, var(--app-muted)); font-size: 0.75rem; }
+.generator-history-meta span,
+.generator-history-meta time { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.generator-history-actions { display: flex; align-items: center; gap: 2px; }
+.generator-history-confirm { min-height: 36px; border: 0; border-radius: var(--app-shape-field); padding: 0 10px; color: var(--m3e-color-on-error-container, #410002); background: var(--m3e-color-error-container, #ffdad6); cursor: pointer; font: inherit; font-size: 0.8125rem; font-weight: 600; }
+.generator-history-empty { margin: 0; padding: 12px 4px; color: var(--m3e-color-on-surface-variant, var(--app-muted)); }
+
+.otp-transfer {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.otp-transfer > legend,
+.otp-transfer > p,
+.otp-transfer > img {
+  grid-column: 1 / -1;
+}
+
+.otp-transfer-actions,
+.steam-file-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.otp-transfer .file-action,
+.steam-file-actions .file-action {
+  min-height: 44px;
+  padding-inline: 14px;
+}
+
+.otp-qr-preview {
+  width: 240px;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
+}
+
+@media (max-width: 560px) {
+  .generator-result,
+  .generator-form,
+  .generator-options,
+  .otp-transfer { grid-template-columns: 1fr; }
+  .generator-result-actions { justify-content: flex-end; }
+  .generator-modes { width: 100%; }
+  .generator-modes button { min-width: 0; flex: 1; padding-inline: 6px; }
+  .generator-history-list li { grid-template-columns: minmax(0, 1fr) auto; }
+  .generator-history-meta { grid-column: 1; }
+  .generator-history-actions { grid-column: 2; grid-row: 1 / span 2; }
+}
+

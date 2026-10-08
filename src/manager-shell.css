@@ -1,0 +1,260 @@
+/* shell —— 壳层基础件：m3e 组件令牌覆盖、登录与 Windows Hello、徽章/指标/空状态/文件操作/恢复面板/边界行。
+   从原来的 manager.css 按原顺序切分（1-257 行），导入顺序不可调整：
+   这些文件共享同一条级联，换顺序会改变同名选择器的胜负。 */
+/* 设计令牌统一在 tokens.css，本文件只消费。 */
+#root m3e-icon {
+  /* 跟着字号走，否则比 24px 小的按钮里图标会偏离中心。 */
+  inline-size: 1em;
+  block-size: 1em;
+  flex: 0 0 auto;
+}
+
+#root m3e-button {
+  --m3e-button-icon-size: var(--app-icon-small);
+}
+
+#root m3e-icon-button {
+  --m3e-icon-button-icon-size: var(--app-icon-small);
+}
+
+.vault-auth {
+  align-content: center;
+  background: var(--app-bg);
+}
+
+.security-note {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--app-shape-card);
+  color: var(--app-muted);
+  background: color-mix(in srgb, var(--app-selected) 48%, transparent);
+  font-size: 0.8rem;
+}
+
+.hello-unlock-action {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid var(--app-outline);
+  padding-top: 14px;
+}
+
+.hello-unlock-action m3e-button {
+  justify-self: start;
+}
+
+.hello-unlock-action small,
+.hello-status-note {
+  color: var(--md-sys-color-on-surface-variant, var(--app-muted));
+  line-height: 1.5;
+}
+
+.windows-hello-card {
+  grid-column: 1 / -1;
+}
+
+.settings-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-card-heading > m3e-icon {
+  flex: 0 0 auto;
+  --m3e-icon-size: 24px;
+  color: var(--app-primary);
+}
+
+.hello-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-card);
+  overflow: hidden;
+}
+
+.hello-status-grid > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+}
+
+.hello-status-grid > span + span {
+  border-left: 1px solid var(--app-outline);
+}
+
+.hello-status-grid strong,
+.hello-status-grid small {
+  overflow-wrap: anywhere;
+}
+
+.hello-status-grid small {
+  color: var(--app-muted);
+}
+
+.nav-count {
+  min-width: 28px;
+  border-radius: var(--app-shape-pill);
+  padding: 3px 8px;
+  background: color-mix(in srgb, var(--app-primary) 14%, transparent);
+  text-align: center;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.local-badge,
+.boundary-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.local-badge {
+  min-height: 48px;
+  border-radius: var(--app-shape-card);
+  padding: 8px 12px;
+  color: var(--app-muted);
+  background: color-mix(in srgb, var(--app-selected) 58%, transparent);
+  font-size: 0.82rem;
+}
+
+.sr-status {
+  min-height: 24px;
+  color: var(--md-sys-color-primary, var(--app-primary));
+  font-weight: 600;
+}
+
+.metric > m3e-icon {
+  --m3e-icon-size: 24px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  color: var(--md-sys-color-primary, var(--app-primary));
+}
+
+.metric-word {
+  font-size: 1.75rem !important;
+}
+
+.getting-started {
+  min-height: 112px;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+}
+
+.getting-started-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.feature-icon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--app-shape-card);
+  color: var(--md-sys-color-on-primary-container, var(--app-text));
+  background: var(--md-sys-color-primary-container, var(--app-selected));
+}
+
+.feature-icon m3e-icon {
+  --m3e-icon-size: 24px;
+}
+
+.getting-started p,
+.supporting,
+.editor-dialog header p,
+.field small {
+  margin-top: 6px;
+  color: var(--md-sys-color-on-surface-variant, var(--app-muted));
+  line-height: 1.5;
+}
+
+.url-list {
+  display: block;
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-cell {
+  min-width: 112px;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.empty-state {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 340px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  padding: 40px;
+  color: var(--app-muted);
+  text-align: center;
+}
+
+.empty-state m3e-button {
+  max-width: 100%;
+}
+
+.empty-state > m3e-icon {
+  --m3e-icon-size: 24px;
+  color: var(--app-primary);
+}
+
+.file-action {
+  min-height: 48px;
+  border-radius: var(--app-shape-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 18px;
+  color: var(--md-sys-color-on-secondary-container, var(--app-text));
+  background: var(--md-sys-color-secondary-container, var(--app-selected));
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.file-action input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+}
+
+.recovery-panel {
+  border-top: 1px solid var(--app-outline);
+  padding-top: 16px;
+}
+
+.settings-message {
+  grid-column: 1 / -1;
+}
+
+.boundary-row {
+  min-height: 48px;
+  border-radius: var(--app-shape-card);
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--app-selected) 42%, transparent);
+}
+
+.boundary-row.warning {
+  color: #6f4a00;
+  background: #ffe1a6;
+}
+

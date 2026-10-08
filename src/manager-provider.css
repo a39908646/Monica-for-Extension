@@ -1,0 +1,213 @@
+/* provider —— 密码源页面：来源卡片、连接网格、密码源表单与弹窗。
+   从原来的 manager.css 按原顺序切分（781-990 行），导入顺序不可调整：
+   这些文件共享同一条级联，换顺序会改变同名选择器的胜负。 */
+.provider-page {
+  display: grid;
+  gap: 20px;
+  width: min(100%, 820px);
+}
+
+.source-card {
+  min-width: 0;
+}
+
+.source-title,
+.source-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.provider-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+  align-items: start;
+  gap: 16px;
+}
+
+.field-wide {
+  grid-column: 1 / -1;
+}
+
+.provider-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.provider-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.provider-connect-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+  gap: 16px;
+}
+
+.source-title {
+  align-items: flex-start;
+}
+
+.source-title > div {
+  min-width: 0;
+}
+
+.source-title h2 {
+  overflow-wrap: anywhere;
+}
+
+.source-icon {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--app-shape-card);
+  color: var(--md-sys-color-on-primary-container, var(--app-text));
+  background: var(--md-sys-color-primary-container, var(--app-selected));
+}
+
+.source-icon m3e-icon {
+  --m3e-icon-size: 24px;
+}
+
+.security-note m3e-icon,
+.local-badge m3e-icon,
+.boundary-row m3e-icon {
+  --m3e-icon-size: 20px;
+  flex: 0 0 auto;
+}
+
+.source-title p {
+  max-width: 340px;
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--app-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.provider-conflict {
+  display: grid;
+  gap: 6px;
+  border: 1px solid color-mix(in srgb, #b26a00 38%, transparent);
+  border-radius: var(--app-shape-card);
+  padding: 12px;
+  background: color-mix(in srgb, #ffe1a6 58%, transparent);
+}
+
+.provider-conflict p,
+.provider-conflict small {
+  color: var(--app-muted);
+}
+
+.conflict-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.connect-source-card {
+  overflow: hidden;
+}
+
+.connect-source {
+  width: 100%;
+  min-height: 104px;
+  border: 0;
+  border-radius: var(--m3e-card-shape);
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 14px;
+  padding: 20px;
+  color: var(--app-primary);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.connect-source:hover {
+  background: color-mix(in srgb, var(--app-selected) 45%, transparent);
+}
+
+.connect-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--app-shape-card);
+  display: grid;
+  place-items: center;
+  color: var(--md-sys-color-on-primary-container, var(--app-text));
+  background: var(--md-sys-color-primary-container, var(--app-selected));
+}
+
+.connect-icon m3e-icon,
+.connect-arrow {
+  --m3e-icon-size: 24px;
+}
+
+.connect-arrow {
+  justify-self: end;
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+
+.connect-source:hover .connect-arrow {
+  transform: translateX(2px);
+}
+
+.connect-source span {
+  display: grid;
+  gap: 4px;
+}
+
+.connect-source small {
+  color: var(--app-muted);
+}
+
+.provider-dialog {
+  width: min(100%, 760px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.provider-dialog > .provider-form {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.provider-dialog > header {
+  flex: 0 0 auto;
+}
+
+.provider-dialog .provider-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  border-top: 1px solid var(--app-outline);
+  padding: 12px 0 0;
+  background: var(--md-sys-color-surface-container-high, var(--app-surface));
+}
+
+@container (max-width: 44rem) {
+  .provider-dialog .provider-actions {
+    position: static;
+  }
+}

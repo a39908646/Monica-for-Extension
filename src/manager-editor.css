@@ -1,0 +1,322 @@
+/* editor —— 登录项编辑器：类型选择、特殊记录（Wi-Fi/SSH/条码）、URI 与自定义字段、内容块、字段控件。
+   从原来的 manager.css 按原顺序切分（462-780 行），导入顺序不可调整：
+   这些文件共享同一条级联，换顺序会改变同名选择器的胜负。 */
+.login-item-dialog {
+  width: min(100%, 780px);
+}
+
+.login-item-form {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+}
+
+.login-type-picker {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+}
+
+.login-type-picker legend {
+  margin-bottom: 6px;
+  color: var(--md-sys-color-on-surface-variant, var(--app-muted));
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.login-type-segments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
+  gap: 4px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-card);
+  padding: 4px;
+}
+
+.login-type-segments label {
+  position: relative;
+  min-width: 0;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--app-shape-field);
+  cursor: pointer;
+}
+
+.login-type-segments input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.login-type-segments span {
+  width: 100%;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--app-shape-field);
+  padding: 0 8px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.login-type-segments input:checked + span {
+  color: var(--md-sys-color-on-secondary-container, var(--app-text));
+  background: var(--md-sys-color-secondary-container, var(--app-selected));
+}
+
+.login-type-segments input:focus-visible + span {
+  outline: none;
+  box-shadow: var(--app-focus-shadow);
+}
+
+.editor-fieldset {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-card);
+  padding: 12px;
+}
+
+.editor-fieldset legend {
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+.special-record-fields {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+}
+
+.ssh-format-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant, var(--app-muted));
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.special-advanced {
+  min-width: 0;
+  border-top: 1px solid var(--app-outline);
+  padding-top: 12px;
+}
+
+.special-advanced summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--md-sys-color-primary, var(--app-primary));
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.special-advanced[open] {
+  display: grid;
+  gap: 12px;
+}
+
+.special-advanced textarea,
+.special-record-fields textarea {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+.special-transfer {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.special-transfer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.barcode-render-modes {
+  width: fit-content;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(92px, 1fr));
+  gap: 4px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-field);
+  padding: 4px;
+}
+
+.barcode-render-modes label {
+  position: relative;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.barcode-render-modes input {
+  position: absolute;
+  opacity: 0;
+}
+
+.barcode-render-modes span {
+  pointer-events: none;
+}
+
+.barcode-render-modes label:has(input:checked) {
+  color: var(--m3e-color-on-secondary-container, var(--app-text));
+  background: var(--m3e-color-secondary-container, var(--app-selected));
+  font-weight: 600;
+}
+
+.barcode-render-modes label:has(input:focus-visible) {
+  outline: none;
+  box-shadow: var(--app-focus-shadow);
+}
+
+.special-transfer img {
+  width: 160px;
+  height: 160px;
+  border-radius: var(--app-shape-card);
+  background: #fff;
+  object-fit: contain;
+}
+
+.special-transfer img.barcode-linear-preview {
+  width: min(100%, 360px);
+  height: 112px;
+  border-radius: var(--app-shape-field);
+}
+
+.uri-rule-list,
+.custom-field-list {
+  display: grid;
+  gap: 8px;
+}
+
+.uri-rule-row,
+.custom-field-row {
+  display: grid;
+  grid-template-columns: 164px minmax(0, 1fr) 44px;
+  gap: 8px;
+  align-items: center;
+}
+
+.custom-field-row {
+  grid-template-columns: minmax(120px, 0.8fr) minmax(160px, 1.2fr) auto 44px;
+}
+
+.uri-rule-row input,
+.uri-rule-row select,
+.custom-field-row input {
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  border-radius: var(--app-shape-field);
+  outline: 0;
+  padding: 0 12px;
+  color: var(--app-text);
+  background: var(--md-sys-color-surface-container-highest, var(--app-surface-high));
+  font: inherit;
+}
+
+/* 内容块：与 Android 端共用受保护字段，编辑器只改字段值。 */
+.content-block-editor {
+  gap: 10px;
+}
+
+.content-block-damaged {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--app-shape-field);
+  color: var(--app-text);
+  background: var(--md-sys-color-surface-container-highest, var(--app-surface-high));
+  font: 400 .8125rem/1.5 var(--font-ui);
+}
+
+.content-block-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-card);
+  background: var(--md-sys-color-surface-container-high, var(--app-surface));
+}
+
+.content-block-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.content-block-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.content-block-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.content-block-qr {
+  display: flex;
+  align-items: center;
+}
+
+.content-block-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.compact-check {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.compact-check input {
+  width: 20px;
+  min-height: 20px;
+  padding: 0;
+}
+
+.vault-item-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field textarea {
+  width: 100%;
+  resize: vertical;
+  border: 0;
+  border-radius: var(--app-shape-field);
+  outline: 0;
+  padding: 14px 16px;
+  color: var(--app-text);
+  background: var(--md-sys-color-surface-container-highest, var(--app-surface-high));
+  font: inherit;
+  line-height: 1.5;
+}
+
+.field select {
+  width: 100%;
+  min-height: 56px;
+  border: 0;
+  border-radius: var(--app-shape-field);
+  outline: 0;
+  padding: 0 16px;
+  color: var(--app-text);
+  background: var(--md-sys-color-surface-container-highest, var(--app-surface-high));
+  font: inherit;
+}
+

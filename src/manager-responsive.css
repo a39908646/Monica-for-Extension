@@ -1,0 +1,111 @@
+/* responsive —— 跨模块响应式：≤700px 时各页面/弹窗的单列化与间距。
+   从原来的 manager.css 按原顺序切分（1283-1390 行），导入顺序不可调整：
+   这些文件共享同一条级联，换顺序会改变同名选择器的胜负。 */
+@media (max-width: 700px) {
+  .provider-connect-grid,
+  .provider-list,
+  .provider-form {
+    grid-template-columns: 1fr;
+  }
+
+  .provider-session-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .hello-status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hello-status-grid > span + span {
+    border-top: 1px solid var(--app-outline);
+    border-left: 0;
+  }
+
+  .keepass-remote-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .keepass-remote-facts > span:nth-child(3) {
+    border-left: 0;
+  }
+
+  .keepass-remote-facts > span:nth-child(n + 3) {
+    border-top: 1px solid var(--app-outline);
+  }
+
+  .keepass-remote-error {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .keepass-remote-error m3e-button {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+
+  .mdbx2-card-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mdbx2-card-facts > span:nth-child(3) {
+    border-left: 0;
+  }
+
+  .mdbx2-card-facts > span:nth-child(n + 3) {
+    border-top: 1px solid var(--app-outline);
+  }
+
+  .vault-item-form {
+    grid-template-columns: 1fr;
+  }
+
+  .login-item-form,
+  .special-record-fields,
+  .special-transfer,
+  .uri-rule-row,
+  .custom-field-row {
+    grid-template-columns: 1fr;
+  }
+
+  .login-type-segments {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .uri-rule-row m3e-icon-button,
+  .custom-field-row m3e-icon-button {
+    justify-self: end;
+  }
+
+  .field-wide {
+    grid-column: auto;
+  }
+
+  .getting-started {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .getting-started m3e-button {
+    grid-column: 1 / -1;
+  }
+
+  .getting-started-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .modal-backdrop {
+    align-items: end;
+    padding: 0;
+  }
+
+  .editor-dialog {
+    max-height: 92dvh;
+    border-radius: var(--app-shape-dialog) var(--app-shape-dialog) 0 0;
+  }
+
+  .keepass-provider-dialog {
+    width: calc(100% - 16px);
+    max-height: calc(100dvh - 16px);
+    margin: 8px;
+    border-radius: var(--app-shape-dialog);
+  }
+}

@@ -4,6 +4,19 @@ import { localeOptions } from "./i18n/locales";
 
 const root = new URL("../", import.meta.url);
 
+/** 原 manager.css 按职责拆成这些文件；它们共享同一条级联，顺序不可调整。 */
+const MANAGER_CSS_FILES = [
+  "src/manager-shell.css",
+  "src/manager-dialog.css",
+  "src/manager-editor.css",
+  "src/manager-provider.css",
+  "src/manager-provider-status.css",
+  "src/manager-editor-controls.css",
+  "src/manager-responsive.css",
+  "src/manager-generator.css",
+  "src/manager-steam.css"
+];
+
 describe("release-facing localization", () => {
   it.each(localeOptions.map((option) => option.manifest))("resolves every MV3 store string in %s", async (locale) => {
     const manifest = JSON.parse(await read("public/manifest.json")) as Record<string, any>;
@@ -99,7 +112,7 @@ describe("visual design contract", () => {
   it("uses solid Material surfaces without CSS gradients", async () => {
     const sources = await Promise.all([
       read("src/styles.css"),
-      read("src/manager.css"),
+      ...MANAGER_CSS_FILES.map((file) => read(file)),
       read("src/popup/popup.css"),
       read("scripts/capture-store-assets.mjs")
     ]);
@@ -126,10 +139,17 @@ describe("visual design contract", () => {
 
     // 页面 CSS 只消费令牌：形状与焦点令牌不允许在 tokens.css 之外再定义一次，
     // 否则又会回到「同一个值在两个文件各写一遍」的老路。
-    for (const file of ["src/styles.css", "src/manager.css", "src/nothing.css", "src/home.css", "src/detail-layout.css", "src/responsive.css", "src/popup/popup.css"]) {
+    for (const file of ["src/styles.css", ...MANAGER_CSS_FILES, "src/nothing.css", "src/home.css", "src/detail-layout.css", "src/responsive.css", "src/popup/popup.css"]) {
       const css = await read(file);
       expect(css, `${file} 不应重复定义形状/焦点令牌`).not.toMatch(/--app-shape-(?:card|field|dialog|pill)\s*:|--app-focus-(?:wash|shadow)\s*:/);
     }
+  });
+
+  it("imports the split manager stylesheets in cascade order", async () => {
+    const main = await read("src/main.ts");
+    const imported = [...main.matchAll(/import "\.\/(manager-[a-z-]+\.css)";/g)].map((match) => `src/${match[1]}`);
+    // 这些文件是同一条级联的切片，顺序错了会改变同名选择器的胜负。
+    expect(imported).toEqual(MANAGER_CSS_FILES);
   });
 
   it("does not nest M3E cards in manager templates", async () => {

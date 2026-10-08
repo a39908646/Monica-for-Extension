@@ -1,0 +1,237 @@
+/* provider-status —— 密码源会话状态：KeePass/MDBX2 事实表、会话摘要、能力说明、警告、保护预览、附件操作。
+   从原来的 manager.css 按原顺序切分（991-1224 行），导入顺序不可调整：
+   这些文件共享同一条级联，换顺序会改变同名选择器的胜负。 */
+
+.provider-session-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.keepass-source-segments {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.keepass-remote-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-card);
+  overflow: hidden;
+}
+
+.keepass-remote-facts > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+}
+
+.keepass-remote-facts > span + span {
+  border-left: 1px solid var(--app-outline);
+}
+
+.keepass-remote-facts strong,
+.keepass-remote-facts small {
+  overflow-wrap: anywhere;
+}
+
+.keepass-remote-facts small {
+  color: var(--app-muted);
+}
+
+.keepass-remote-error {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  border: 1px solid var(--md-sys-color-error, #ba1a1a);
+  border-radius: var(--app-shape-card);
+  padding: 12px;
+  color: var(--md-sys-color-on-error-container, #410002);
+  background: var(--md-sys-color-error-container, #ffdad6);
+}
+
+.keepass-remote-error > m3e-icon,
+.keepass-dialog-notice > m3e-icon {
+  --m3e-icon-size: 20px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+}
+
+.keepass-remote-error > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.keepass-remote-error p {
+  color: inherit;
+  line-height: 1.5;
+}
+
+.keepass-dialog-notice {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: var(--app-shape-card);
+  padding: 8px 12px;
+  color: var(--md-sys-color-on-tertiary-container, var(--app-text));
+  background: var(--md-sys-color-tertiary-container, var(--app-selected));
+}
+
+.mdbx2-card-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-card);
+  overflow: hidden;
+}
+
+.mdbx2-card-facts > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+}
+
+.mdbx2-card-facts > span + span {
+  border-left: 1px solid var(--app-outline);
+}
+
+.mdbx2-card-facts strong,
+.mdbx2-card-facts small {
+  overflow-wrap: anywhere;
+}
+
+.mdbx2-card-facts small {
+  color: var(--app-muted);
+}
+
+.provider-session-summary > span {
+  min-width: 0;
+  border-radius: var(--app-shape-card);
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--md-sys-color-surface-container-highest, var(--app-surface-high));
+}
+
+.provider-session-summary strong,
+.provider-session-summary small {
+  overflow-wrap: anywhere;
+}
+
+.provider-session-summary small {
+  color: var(--app-muted);
+}
+
+.provider-session-summary.locked {
+  display: block;
+}
+
+.provider-session-summary.locked p,
+.provider-capability-note,
+.provider-dirty-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.provider-session-summary.locked p,
+.provider-capability-note {
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-card);
+  padding: 10px 12px;
+  color: var(--app-muted);
+}
+
+.provider-session-summary m3e-icon,
+.provider-capability-note m3e-icon,
+.provider-dirty-warning m3e-icon,
+.protection-preview m3e-icon {
+  --m3e-icon-size: 20px;
+  flex: 0 0 auto;
+}
+
+.provider-warning-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 22px;
+  color: var(--app-muted);
+}
+
+.provider-dirty-warning {
+  border: 1px solid color-mix(in srgb, #b26a00 42%, transparent);
+  border-radius: var(--app-shape-card);
+  padding: 12px;
+  color: #6f4a00;
+  background: #ffe1a6;
+}
+
+.provider-dirty-warning div {
+  display: grid;
+  gap: 4px;
+}
+
+.provider-dirty-warning p {
+  color: inherit;
+}
+
+:root[data-theme="dark"] .provider-dirty-warning {
+  color: #ffdda3;
+  background: #4a3410;
+}
+
+.provider-capability-note {
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.provider-file-action {
+  width: 100%;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+.provider-file-action span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-file-action.secondary {
+  color: var(--md-sys-color-on-surface-variant, var(--app-text));
+  background: var(--md-sys-color-surface-container-highest, var(--app-surface-high));
+}
+
+.protection-preview {
+  min-height: 56px;
+  border-radius: var(--app-shape-field);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  color: var(--app-text);
+  background: var(--md-sys-color-surface-container-highest, var(--app-surface-high));
+}
+
+.provider-boundaries {
+  display: grid;
+  gap: 8px;
+}
+
+.password-field {
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border-radius: var(--app-shape-field);
+  padding-right: 8px;
+  background: var(--md-sys-color-surface-container-highest, var(--app-surface-high));
+}
