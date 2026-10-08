@@ -9,6 +9,7 @@ import { parametersFromItem } from "../../core/login-otp";
 import { bytesToBase64 } from "../../security/encoding";
 import { createSourceRecord } from "../../core/source-records";
 import { bitwardenMutationFingerprint } from "./bitwarden-durable-sync";
+import { ProviderTransportError } from "../provider-transport";
 import { BitwardenAttachmentDownloadService } from "./bitwarden-attachments";
 import { isSteamMaFileLogin, isSteamMaFileName, parseSteamMaFile, STEAM_MAFILE_MAX_BYTES } from "./bitwarden-steam-mafile";
 import { PROVIDER_ATTACHMENT_CHUNK_BYTES, type ProviderAttachmentSummary } from "../attachments/attachment-contract";
@@ -369,7 +370,8 @@ export class BitwardenProvider implements ProviderAdapter {
           }
         }
       } catch (error) {
-        for (const local of changes) conflicts.push({ itemId: local.id, reason: errorMessage(error), local, remote: findEquivalent(local, remotes) });
+        const writeRejected = remoteWriteRejected(error);
+        for (const local of changes) conflicts.push({ itemId: local.id, reason: errorMessage(error), local, remote: findEquivalent(local, remotes), ...(writeRejected ? { writeRejected: true } : {}) });
         merged.push(...workingLocals);
       }
     }
@@ -393,7 +395,7 @@ export class BitwardenProvider implements ProviderAdapter {
           await registerAcknowledgement(receiptsByMutationId.get(pending.id), { mutationId: pending.id, itemId: local.id, operation: pending.operation, remoteId }, createdItem);
         }
       } catch (error) {
-        conflicts.push({ itemId: local.id, reason: errorMessage(error), local });
+        conflicts.push({ itemId: local.id, reason: errorMessage(error), local, ...(remoteWriteRejected(error) ? { writeRejected: true } : {}) });
         merged.push(local);
       }
     }
@@ -876,6 +878,15 @@ function record(value: unknown): Record<string, unknown> {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Bitwarden 操作失败。";
+}
+
+/**
+ * 只有服务器主动拒绝（4xx）才算「写回被拒」，它是非重试错误，重试也是同样结果；
+ * 网络中断和 5xx 是暂态的，交给队列重试，不应被描述成写回被拒。
+ */
+function remoteWriteRejected(error: unknown): boolean {
+  return error instanceof ProviderTransportError && error.retryable === false
+    && typeof error.status === "number" && error.status >= 400 && error.status < 500;
 }
 
 async function bitwardenFolderNames(payload: Record<string, unknown>, key: BitwardenSymmetricKey): Promise<Map<string, string>> {

@@ -50,6 +50,20 @@ export const DEFAULT_BITWARDEN_CLIENT_LIMITS: Readonly<BitwardenClientLimits> = 
   maxAttachmentInfoResponseBytes: 64 * 1024
 });
 
+/** 服务器拒绝写回时，只把 Bitwarden 模型里的字段名带进错误文案。 */
+const MAX_REJECTED_FIELDS = 6;
+const REJECTED_FIELD_NAMES = new Set([
+  "name", "notes", "type", "favorite", "reprompt", "folderid", "organizationid", "collectionids", "key",
+  "attachments", "passwordhistory", "deleteddate", "archiveddate", "creationdate", "revisiondate", "data",
+  "fields", "fields.name", "fields.value", "fields.type",
+  "login", "login.username", "login.password", "login.totp", "login.uris", "login.uri", "login.fido2credentials",
+  "card", "card.cardholdername", "card.brand", "card.number", "card.expmonth", "card.expyear", "card.code",
+  "identity", "identity.title", "identity.firstname", "identity.lastname", "identity.address1", "identity.address2",
+  "identity.address3", "identity.city", "identity.state", "identity.postalcode", "identity.country", "identity.company",
+  "identity.email", "identity.phone", "identity.ssn", "identity.username", "identity.passportnumber",
+  "identity.licensenumber", "securenote", "sshkey", "sshkey.privatekey", "sshkey.publickey", "sshkey.fingerprint"
+]);
+
 export interface BitwardenAttachmentDownloadInfo {
   id?: string;
   url: string;
@@ -899,7 +913,17 @@ function normalizeSsoValue(value: unknown, label: string): string {
 }
 
 function bitwardenSafeHttpMessage(prefix: string, status: number, body?: Record<string, unknown>): string | undefined {
-  if (prefix !== "Bitwarden 登录失败" || status !== 400 || !body) return undefined;
+  if (!body) return undefined;
+  const login = bitwardenLoginHttpMessage(prefix, status, body);
+  if (login) return login;
+  // 4xx 是服务器主动拒绝，只有它值得把服务器的理由带出来；5xx/429 是暂态，重试即可。
+  if (status < 400 || status >= 500) return undefined;
+  const detail = bitwardenRejectionDetail(body);
+  return detail ? `${prefix}（HTTP ${status}）：${detail}` : undefined;
+}
+
+function bitwardenLoginHttpMessage(prefix: string, status: number, body: Record<string, unknown>): string | undefined {
+  if (prefix !== "Bitwarden 登录失败" || status !== 400) return undefined;
   const code = `${stringValue(body, "error")} ${stringValue(body, "error_description")}`.toLocaleLowerCase("en-US");
   const errorModel = recordValue(body, "ErrorModel", "errorModel");
   const officialMessage = stringValue(errorModel || {}, "Message", "message").toLocaleLowerCase("en-US");
@@ -915,6 +939,29 @@ function bitwardenSafeHttpMessage(prefix: string, status: number, body?: Record<
     return "Bitwarden 两步验证码错误或已过期，请获取新验证码后重试。";
   }
   return undefined;
+}
+
+/**
+ * 写回被服务器拒绝时，此前界面上只剩一句「HTTP 400」，整段响应体被丢弃。
+ * 这里只补上「服务器认为哪个字段不合法」：字段名是 Bitwarden 自己的模型路径，
+ * 而服务器回显的消息、字段值、请求体一律不进文案，保持「错误文案不含服务器回显内容」。
+ */
+function bitwardenRejectionDetail(body: Record<string, unknown>): string | undefined {
+  const errorModel = recordValue(body, "ErrorModel", "errorModel") || {};
+  const validation = recordValue(errorModel, "ValidationErrors", "validationErrors")
+    || recordValue(body, "ValidationErrors", "validationErrors")
+    || recordValue(body, "errors", "Errors");
+  if (!validation) return undefined;
+  const names = Object.keys(validation);
+  const fields = names.filter(isRejectableFieldName).slice(0, MAX_REJECTED_FIELDS);
+  if (!fields.length) return undefined;
+  const unrecognized = names.length - fields.length;
+  return `被拒字段：${fields.join("、")}${unrecognized > 0 ? `（另有 ${unrecognized} 个未识别字段）` : ""}。`;
+}
+
+/** 未列入 Bitwarden 模型路径的键一律不展示：服务器的键名同样属于不可信内容。 */
+function isRejectableFieldName(field: string): boolean {
+  return REJECTED_FIELD_NAMES.has(field.replace(/\[\d+\]/g, "").toLocaleLowerCase("en-US"));
 }
 
 function isLoopbackHost(hostname: string): boolean {

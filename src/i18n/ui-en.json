@@ -1867,6 +1867,7 @@
   "浏览器插件": "Browser extension",
   "浏览器本地": "Local browser",
   "浏览器版本与 Bitwarden 版本都存在": "Both browser and Bitwarden versions exist",
+  "Bitwarden 拒绝写入，本地修改尚未上传": "Bitwarden rejected this write; the local change was not uploaded.",
   "浏览器版本存在；远端已删除": "Browser version exists; deleted remotely",
   "浏览器环境限制": "Browser environment limitation",
   "浏览器限制": "Browser limitation",

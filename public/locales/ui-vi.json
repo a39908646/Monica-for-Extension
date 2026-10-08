@@ -1867,6 +1867,7 @@
   "浏览器插件": "Bổ sung trình duyệt",
   "浏览器本地": "Trình duyệt cục bộ",
   "浏览器版本与 Bitwarden 版本都存在": "Cả trình duyệt và phiên bản Bitwarden đều tồn tại",
+  "Bitwarden 拒绝写入，本地修改尚未上传": "Bitwarden đã từ chối lần ghi này; thay đổi cục bộ chưa được tải lên.",
   "浏览器版本存在；远端已删除": "Phiên bản trình duyệt đã tồn tại; bị xóa từ xa",
   "浏览器环境限制": "Giới hạn môi trường trình duyệt",
   "浏览器限制": "Giới hạn trình duyệt",

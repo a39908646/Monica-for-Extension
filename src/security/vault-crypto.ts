@@ -210,6 +210,7 @@ function validProviderConflict(value: unknown): boolean {
   const conflict = value as Record<string, unknown>;
   return typeof conflict.id === "string" && typeof conflict.providerId === "string" && typeof conflict.itemId === "string"
     && typeof conflict.reason === "string" && typeof conflict.detectedAt === "string"
+    && (conflict.writeRejected === undefined || typeof conflict.writeRejected === "boolean")
     && (conflict.local === undefined || Boolean(conflict.local) && typeof conflict.local === "object" && !Array.isArray(conflict.local))
     && (conflict.remote === undefined || Boolean(conflict.remote) && typeof conflict.remote === "object" && !Array.isArray(conflict.remote));
 }

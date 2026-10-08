@@ -3799,6 +3799,7 @@ function toProviderConflictSummary(conflict: ProviderConflict): ProviderConflict
     reason: redactProviderMessage(conflict.reason),
     ...(conflict.local ? { local: { title: conflict.local.title } } : {}),
     ...(conflict.remote ? { remote: { title: conflict.remote.title } } : {}),
+    ...(conflict.writeRejected ? { writeRejected: true } : {}),
     detectedAt: conflict.detectedAt
   };
 }

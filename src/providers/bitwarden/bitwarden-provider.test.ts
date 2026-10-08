@@ -129,6 +129,32 @@ describe("Bitwarden provider", () => {
     await expect(decryptBitwardenString(String(finalLogin.password || finalLogin.Password), KEY)).resolves.toBe("browser-secret");
   });
 
+  it("records a server-rejected write as a rejection instead of a content conflict", async () => {
+    const remote = await loginCipher("remote-secret", OLD_REVISION);
+    let putCount = 0;
+    const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/sync")) return json({ Profile: { Id: "user" }, Ciphers: [remote] });
+      if (init?.method === "PUT") {
+        putCount += 1;
+        return json({ ErrorModel: { Message: "The model state is invalid.", ValidationErrors: { Name: ["required"] } } }, 400);
+      }
+      throw new Error(`Unexpected ${init?.method} ${url}`);
+    }) as unknown as typeof fetch;
+    const provider = new BitwardenProvider(fetcher);
+    const imported = (await provider.sync(account(), { now: "2026-07-15T03:01:00.000Z", localItems: [] })).items[0] as LoginItem;
+    const changed: LoginItem = { ...imported, password: "browser-secret", updatedAt: "2026-07-15T03:04:00.000Z" };
+
+    const rejected = await provider.sync(account(), { now: "2026-07-15T03:06:00.000Z", localItems: [changed] });
+
+    expect(putCount).toBe(1);
+    expect(rejected.conflicts).toEqual([expect.objectContaining({ itemId: changed.id, writeRejected: true })]);
+    // 服务器理由随冲突一起返回，不再只剩一句「HTTP 400」。
+    expect(rejected.conflicts[0].reason).toContain("被拒字段：Name");
+    // 本地修改仍然保留，用户可以重试或改用远端版本。
+    expect(rejected.items[0]).toMatchObject({ password: "browser-secret" });
+  });
+
   it("initializes matching legacy custom fields without an unnecessary upload", async () => {
     const remoteField = { Type: 0, Name: await encryptBitwardenString("Existing", KEY), Value: await encryptBitwardenString("value", KEY) };
     const remote = { ...(await loginCipher("remote-secret", OLD_REVISION)), Fields: [remoteField] };
@@ -443,6 +469,8 @@ describe("Bitwarden provider", () => {
     remote = await loginCipher("server", "2026-07-15T03:02:00.000Z");
     const second = await provider.sync(account(), { now: "2026-07-15T03:04:00.000Z", localItems: [local] });
     expect(second.conflicts).toHaveLength(1);
+    // 真正的内容分叉不是写回被拒：只有 4xx 拒绝才会带上这个标记。
+    expect(second.conflicts[0].writeRejected).toBeUndefined();
     expect(second.items[0]).toMatchObject({ password: "browser" });
     expect(putCount).toBe(0);
   });

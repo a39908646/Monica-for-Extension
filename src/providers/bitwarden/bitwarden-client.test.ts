@@ -437,6 +437,50 @@ describe("Bitwarden attachment write client", () => {
   });
 });
 
+describe("Bitwarden write rejection messages", () => {
+  it("names the rejected Cipher fields when the server refuses a write", async () => {
+    const fetcher = vi.fn(async () => json({
+      ErrorModel: {
+        Message: "The model state is invalid.",
+        ValidationErrors: { Name: ["required"], "login.uri": ["invalid"], FolderId: ["unknown"], Type: ["invalid"], Notes: ["too long"], Fields: ["invalid"], Collections: ["forbidden"] }
+      }
+    }, 400)) as unknown as typeof fetch;
+
+    const error = await rejectionMessage(new BitwardenClient(fetcher, fastTransport()).updateCipher(activeSession(), "cipher-1", { type: 1 }));
+    // 只列可识别的模型字段并限制数量，未识别的（Collections）只计数；服务器回显的消息不进文案。
+    expect(error).toBe("更新 Bitwarden 项目失败（HTTP 400）：被拒字段：Name、login.uri、FolderId、Type、Notes、Fields（另有 1 个未识别字段）。");
+    expect(error).not.toContain("The model state is invalid.");
+  });
+
+  it("never echoes server body content and keeps transient failures free of detail", async () => {
+    // 沿用既有约束：服务器回显的内容（消息、自定义键名）不进错误文案。
+    const echoFetcher = vi.fn(async () => json({ ErrorModel: { Message: "Bearer server-echo-secret", ValidationErrors: { "secret-token": ["x"], Name: ["required"] } } }, 400)) as unknown as typeof fetch;
+    const echoError = await rejectionMessage(new BitwardenClient(echoFetcher, fastTransport()).updateCipher(activeSession(), "cipher-1", { type: 1 }));
+    expect(echoError).toBe("更新 Bitwarden 项目失败（HTTP 400）：被拒字段：Name（另有 1 个未识别字段）。");
+    expect(echoError).not.toContain("server-echo-secret");
+    expect(echoError).not.toContain("secret-token");
+
+    const serverFetcher = vi.fn(async () => json({ ErrorModel: { ValidationErrors: { Name: ["required"] } } }, 500)) as unknown as typeof fetch;
+    // 5xx/429 是暂态，重试即可，不把服务器噪声写进冲突原因。
+    expect(await rejectionMessage(new BitwardenClient(serverFetcher, fastTransport()).updateCipher(activeSession(), "cipher-1", { type: 1 })))
+      .toBe("更新 Bitwarden 项目失败（HTTP 500）。");
+
+    const emptyFetcher = vi.fn(async () => json({}, 400)) as unknown as typeof fetch;
+    expect(await rejectionMessage(new BitwardenClient(emptyFetcher, fastTransport()).updateCipher(activeSession(), "cipher-1", { type: 1 })))
+      .toBe("更新 Bitwarden 项目失败（HTTP 400）。");
+  });
+});
+
+/** 取回被拒操作的错误文案；断言的是完整字符串，所以不用 rejects.toThrow 的子串匹配。 */
+async function rejectionMessage(operation: Promise<unknown>): Promise<string> {
+  try {
+    await operation;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  throw new Error("预期操作失败，但它成功了。");
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }

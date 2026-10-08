@@ -120,6 +120,9 @@ function queueDetail(): string {
 }
 
 function conflictSides(conflict: ProviderConflictSummary): string {
+  // 写回被服务器拒绝不是内容分叉：本地镜像与远端本来都有一份，
+  // 用「两个版本都存在」描述会让用户以为是自己存了两条。
+  if (conflict.writeRejected) return tr('Bitwarden 拒绝写入，本地修改尚未上传');
   if (conflict.local && conflict.remote) return tr('浏览器版本与 Bitwarden 版本都存在');
   if (conflict.local) return tr('浏览器版本存在；远端已删除');
   if (conflict.remote) return tr('Bitwarden 版本存在；浏览器版本已删除');

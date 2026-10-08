@@ -356,6 +356,11 @@ export interface ProviderConflictInput {
   reason: string;
   local?: VaultItem;
   remote?: VaultItem;
+  /**
+   * 服务器明确拒绝了这次写入（4xx）：本地镜像和远端本来都存在，
+   * 这不是内容分叉，界面不能用「两个版本都存在」来描述。
+   */
+  writeRejected?: boolean;
 }
 
 export interface ProviderConflict extends ProviderConflictInput {
@@ -374,6 +379,7 @@ export interface ProviderConflictSummary {
   reason: string;
   local?: { title: string };
   remote?: { title: string };
+  writeRejected?: boolean;
   detectedAt: string;
 }
 

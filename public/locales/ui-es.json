@@ -1867,6 +1867,7 @@
   "浏览器插件": "Extensión del navegador",
   "浏览器本地": "Navegador local",
   "浏览器版本与 Bitwarden 版本都存在": "Existen versiones de navegador y Bitwarden",
+  "Bitwarden 拒绝写入，本地修改尚未上传": "Bitwarden rechazó esta escritura; el cambio local no se subió.",
   "浏览器版本存在；远端已删除": "La versión del navegador existe; eliminada remotamente",
   "浏览器环境限制": "Limitación del entorno del navegador",
   "浏览器限制": "Limitación del navegador",
