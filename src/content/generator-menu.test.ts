@@ -10,7 +10,8 @@ vi.mock("../i18n/runtime", () => ({
   observeUiLocale: () => () => undefined
 }));
 
-const PREFERENCES_KEY = "generator_preferences_v1";
+const COUNTS_KEY = "monica.generator.counts";
+const MODE_KEY = "monica.generator.mode";
 const ENABLED_KEY = "monica.autofill.inline.enabled";
 
 let dom: JSDOM;
@@ -50,10 +51,6 @@ function buttonByText(root: ParentNode, text: string): HTMLButtonElement {
   return [...root.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === text)!;
 }
 
-function buttonByLabel(root: ParentNode, label: string): HTMLButtonElement {
-  return [...root.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.getAttribute("aria-label") === label)!;
-}
-
 /** jsdom 的 dispatchEvent 无条件把 isTrusted 置 false；绕过包装层直接调用 impl 伪造受信点击。 */
 function trustedClick(element: Element): void {
   const implSymbol = Object.getOwnPropertySymbols(element)[0];
@@ -71,10 +68,7 @@ async function openPanel(): Promise<ShadowRoot> {
   return panelRoot()!;
 }
 
-function revealedValue(panel: ShadowRoot): string {
-  const toggle = [...panel.querySelectorAll<HTMLButtonElement>("button")]
-    .find((button) => ["显示", "隐藏"].includes(button.getAttribute("aria-label") || ""));
-  if (toggle?.getAttribute("aria-label") === "显示") trustedClick(toggle);
+function generatedValue(panel: ShadowRoot): string {
   return panel.querySelector("code")!.textContent || "";
 }
 
@@ -95,7 +89,12 @@ beforeEach(() => {
     runtime: { getURL: (path: string) => `chrome-extension://test/${path}` },
     storage: {
       local: {
-        get: vi.fn(async (key: string) => ({ [key]: storage[key] })),
+        get: vi.fn(async (key: string | string[]) => {
+          const keys = typeof key === "string" ? [key] : key;
+          const result: Record<string, unknown> = {};
+          for (const k of keys) result[k] = storage[k];
+          return result;
+        }),
         set: vi.fn(async (values: Record<string, unknown>) => { Object.assign(storage, values); })
       },
       onChanged: { addListener: vi.fn((listener: typeof changed) => { changed = listener; }), removeListener: vi.fn() }
@@ -121,18 +120,17 @@ describe("in-field password generator", () => {
     await vi.waitFor(() => expect(iconHosts()).toHaveLength(0));
   });
 
-  it("opens a masked panel, regenerates, and fills both password fields", async () => {
+  it("opens a panel with a plaintext password and fills both password fields", async () => {
     const panel = await openPanel();
     const output = panel.querySelector("code")!;
-    // 结果始终明文：用户必须核对生成的密码是否符合偏好。
-    const first = revealedValue(panel);
-    expect(first).toMatch(/^[\S]{4,}$/);
+    const first = generatedValue(panel);
+    // 结果始终明文，长度符合 counts 模型（2 大写 + 10 小写 + 4 数字 + 3 符号 = 19）。
+    expect(first).toMatch(/^[A-Za-z0-9!@#$%^&*()_+\-=[\]{}|;:,.<>?]{19}$/);
     expect(output.textContent).toBe(first);
 
     trustedClick(buttonByText(panel, "重新生成"));
-    const second = revealedValue(panel);
+    const second = generatedValue(panel);
     expect(second).not.toBe(first);
-    expect(second).not.toMatch(/^•+$/);
 
     const events = { password: 0, confirm: 0 };
     for (const id of ["password", "confirm"] as const) {
@@ -148,39 +146,49 @@ describe("in-field password generator", () => {
     expect(dom.window.document.activeElement).toBe(field("password"));
   });
 
-  it("exposes the full preference controls on the field panel", async () => {
+  it("exposes count controls for each character type", async () => {
     const panel = await openPanel();
-    const options = panel.querySelector(".options")!;
-    expect(options.textContent).toContain("字符类型");
-    expect(options.textContent).toContain("最少数量");
-    expect(options.textContent).toContain("符号来源");
-    expect(options.textContent).toContain("可读性");
-    // 4 字符类型 + 2 可读性 checkbox，加上隐藏的符号 chips。
-    expect(options.querySelectorAll("input[type='checkbox']").length).toBeGreaterThanOrEqual(6);
-    expect(options.querySelectorAll(".symbol-chip").length).toBeGreaterThanOrEqual(20);
-    expect((options.querySelector("input[data-length-input='symbolLength']") as HTMLInputElement).value).toBe("20");
-    const uppercase = [...options.querySelectorAll<HTMLInputElement>("input[type='checkbox']")].find(input => input.closest("label")?.textContent === "大写字母")!;
-    uppercase.checked = false;
-    uppercase.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
-    await vi.waitFor(() => expect(revealedValue(panel)).not.toMatch(/[A-Z]/));
+    const options = panel.querySelector(".count-row")!;
+    expect(options.textContent).toContain("大写");
+    expect(options.textContent).toContain("小写");
+    expect(options.textContent).toContain("数字");
+    expect(options.textContent).toContain("符号");
+    // 默认 counts：2 大写 + 10 小写 + 4 数字 + 3 符号
+    const inputs = [...options.querySelectorAll<HTMLInputElement>("input[type='number']")];
+    expect(inputs).toHaveLength(4);
+    expect(inputs.map((input) => Number(input.value))).toEqual([2, 10, 4, 3]);
   });
 
-  it("persists the mode and length changes into the shared preferences", async () => {
+  it("persists count changes and regenerates with the new counts", async () => {
+    const panel = await openPanel();
+    const before = generatedValue(panel);
+    // 把数字改为 0，改符号为 0，改大写为 0 → 密码应全为小写字母。
+    const inputs = [...panel.querySelectorAll<HTMLInputElement>(".count-row input[type='number']")];
+    for (const input of inputs) {
+      const key = input.getAttribute("data-count");
+      if (key !== "lowercase") {
+        input.value = "0";
+        input.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+      }
+    }
+    await vi.waitFor(() => {
+      const value = generatedValue(panel);
+      expect(value).toMatch(/^[a-z]+$/);
+      expect(value.length).toBe(10);
+    });
+    expect((storage[COUNTS_KEY] as { lowercase: number }).lowercase).toBe(10);
+    expect(before).not.toBe(generatedValue(panel));
+  });
+
+  it("switches between password and PIN modes and persists the selection", async () => {
     const panel = await openPanel();
     trustedClick(buttonByText(panel, "PIN"));
-    await vi.waitFor(() => expect((storage[PREFERENCES_KEY] as { selectedGenerator: string }).selectedGenerator).toBe("PIN"));
-    expect(revealedValue(panel)).toMatch(/^[0-9]{6}$/);
+    await vi.waitFor(() => expect((storage[MODE_KEY] as string)).toBe("PIN"));
+    expect(generatedValue(panel)).toMatch(/^[0-9]+$/);
 
-    // PIN 模式没有 +/- 按钮，长度通过数字输入框调整。
-    const pinInput = panel.querySelector<HTMLInputElement>("input[type='number']")!;
-    pinInput.value = "7";
-    pinInput.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
-    await vi.waitFor(() => expect((storage[PREFERENCES_KEY] as { pinLength: number }).pinLength).toBe(7));
-    expect(revealedValue(panel)).toMatch(/^[0-9]{7}$/);
-
-    trustedClick(buttonByText(panel, "短语"));
-    await vi.waitFor(() => expect((storage[PREFERENCES_KEY] as { selectedGenerator: string }).selectedGenerator).toBe("PASSPHRASE"));
-    expect(revealedValue(panel).split("-")).toHaveLength(4);
+    trustedClick(buttonByText(panel, "密码"));
+    await vi.waitFor(() => expect((storage[MODE_KEY] as string)).toBe("SYMBOL"));
+    expect(generatedValue(panel).length).toBeGreaterThanOrEqual(4);
   });
 
   it("removes the icons and closes the panel when the inline preference is switched off", async () => {

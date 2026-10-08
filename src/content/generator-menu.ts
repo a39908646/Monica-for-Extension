@@ -1,14 +1,6 @@
-import { INLINE_AUTOFILL_ENABLED_KEY, inlineAutofillEnabled, readInlineAutofillEnabled } from "../autofill/inline-preferences";
-import { DEFAULT_SYMBOLS, passwordStrengthBits } from "../core/credential-generator";
-import {
-  DEFAULT_GENERATOR_PREFERENCES,
-  GENERATOR_PREFERENCES_STORAGE_KEY,
-  GeneratorPreferencesStore,
-  normalizeGeneratorPreferences,
-  resolveAllowedSymbols,
-  type GeneratorPreferences
-} from "../core/generator-preferences";
-import { FIELD_GENERATOR_MODES, fieldGeneratorMode, generateFromPreferences, type FieldGeneratorMode } from "../core/generator-presets";
+import { passwordStrengthBits } from "../core/credential-generator";
+import { generatePassphrase, generatePassword, generatePin } from "../core/credential-generator";
+import { countsToPasswordConfig, DEFAULT_GENERATOR_COUNTS, type GeneratorCounts, type FieldGeneratorMode } from "../core/generator-presets";
 import { getUiLocale, initializeUiLocale, tr } from "../i18n/runtime";
 import { setNativeValue } from "./dom";
 import { generatorMirrorFields, generatorPasswordFields, generatorScopes } from "./generator-fields";
@@ -17,6 +9,7 @@ import { inlineMenuPosition } from "./inline-position";
 import { loginFieldRole, loginFieldScope } from "./login-field-role";
 import { createPromptI18n } from "./prompt-i18n";
 import { promptIcon } from "./prompt-styles";
+import { INLINE_AUTOFILL_ENABLED_KEY, inlineAutofillEnabled, readInlineAutofillEnabled } from "../autofill/inline-preferences";
 
 /** 字段内图标用属性标记，面板用固定 id；两者都只往页面里挂 host 元素，不改动页面结构。 */
 export const GENERATOR_ICON_ATTRIBUTE = "data-monica-password-generator";
@@ -24,8 +17,17 @@ export const GENERATOR_PANEL_HOST_ID = "monica-password-generator-panel";
 
 const ICON_SIZE = 26;
 const ICON_INSET = 6;
-const PANEL_DESIRED_HEIGHT = 480;
+const PANEL_DESIRED_HEIGHT = 420;
+const COUNTS_KEY = "monica.generator.counts";
+const MODE_KEY = "monica.generator.mode";
 const MODE_LABELS: Record<FieldGeneratorMode, string> = { SYMBOL: "密码", PASSWORD: "单词", PIN: "PIN", PASSPHRASE: "短语" };
+const MODE_ORDER: FieldGeneratorMode[] = ["SYMBOL", "PASSWORD", "PIN", "PASSPHRASE"];
+const COUNT_LABELS: Array<{ key: keyof GeneratorCounts; label: string }> = [
+  { key: "uppercase", label: "大写" },
+  { key: "lowercase", label: "小写" },
+  { ...({ key: "digits" as keyof GeneratorCounts, label: "数字" }) },
+  { key: "symbols", label: "符号" }
+];
 
 /**
  * 字段内密码生成器：只在新密码字段上出现。生成不读密码库、不联网、不记任何历史，
@@ -33,22 +35,15 @@ const MODE_LABELS: Record<FieldGeneratorMode, string> = { SYMBOL: "密码", PASS
  */
 export function installPasswordGenerator(rootDocument: Document = document) {
   const view = rootDocument.defaultView!;
-  const store = new GeneratorPreferencesStore();
   const icons = new Map<HTMLInputElement, IconHandle>();
   let disposed = false;
   let enabled = false;
-  let preferences: GeneratorPreferences = DEFAULT_GENERATOR_PREFERENCES;
+  let counts: GeneratorCounts = { ...DEFAULT_GENERATOR_COUNTS };
+  let mode: FieldGeneratorMode = "SYMBOL";
   let panel: PanelState | undefined;
   let frame = 0;
   let scanTimer = 0;
   let observer: MutationObserver | undefined;
-  let preferenceRevision = 0;
-
-  function applyEnabled(next: boolean): void {
-    enabled = next;
-    if (!enabled) { closePanel(); clearIcons(); return; }
-    scheduleScan();
-  }
 
   interface IconHandle { host: HTMLElement; dispose: () => void; }
 
@@ -56,13 +51,13 @@ export function installPasswordGenerator(rootDocument: Document = document) {
     host: HTMLElement;
     field: HTMLInputElement;
     scope: ParentNode;
-    mode: FieldGeneratorMode;
     value: string;
     i18n: ReturnType<typeof createPromptI18n>;
     output: HTMLElement;
     entropy: HTMLElement;
     status: HTMLElement;
     options: HTMLElement;
+    modeLabel: HTMLElement;
     cleanups: Array<() => void>;
     controlSyncs: Array<() => void>;
     refresh: () => void;
@@ -168,23 +163,35 @@ export function installPasswordGenerator(rootDocument: Document = document) {
     scanTimer = view.setTimeout(() => { scanTimer = 0; if (rootDocument.visibilityState !== "hidden") scan(); }, delay);
   }
 
-  /** 任何偏好改动都走这里：规范化、保存、重新生成，并同步面板控件。 */
-  function commit(key: keyof GeneratorPreferences, value: unknown): void {
-    preferences = normalizeGeneratorPreferences({ ...preferences, [key]: value });
-    persist();
-    regenerate();
-    if (panel) for (const sync of panel.controlSyncs) sync();
+  /** 任何数量改动都走这里：夹紧、保存、重新生成，并同步面板控件。 */
+  function commitCount(key: keyof GeneratorCounts, value: number): void {
+    counts = { ...counts, [key]: Math.max(0, Math.min(32, Math.round(value) || 0)) };
+    persistCounts();
+    if (panel) { panel.value = generate(); renderResult(); for (const sync of panel.controlSyncs) sync(); }
   }
 
-  function persist(): void {
-    void store.save(preferences).catch(() => undefined);
+  function setMode(next: FieldGeneratorMode): void {
+    mode = next;
+    persistMode();
+    if (panel) { panel.value = generate(); renderResult(); for (const sync of panel.controlSyncs) sync(); }
   }
 
-  function regenerate(): void {
-    if (!panel) return;
-    panel.value = generateFromPreferences(preferences, panel.mode);
-    renderResult();
-    positionPanel();
+  function persistCounts(): void {
+    void chrome.storage.local.set({ [COUNTS_KEY]: counts }).catch(() => undefined);
+  }
+
+  function persistMode(): void {
+    void chrome.storage.local.set({ [MODE_KEY]: mode }).catch(() => undefined);
+  }
+
+  function generate(): string {
+    if (mode === "PIN") return generatePin(counts.digits || 6);
+    if (mode === "PASSPHRASE") return generatePassphrase({ length: counts.lowercase || 4, delimiter: "-" });
+    return generatePassword(countsToPasswordConfig(counts));
+  }
+
+  function totalLength(): number {
+    return counts.uppercase + counts.lowercase + counts.digits + counts.symbols;
   }
 
   function renderResult(): void {
@@ -192,8 +199,8 @@ export function installPasswordGenerator(rootDocument: Document = document) {
     if (!current) return;
     // 结果始终明文：用户必须核对生成的密码是否符合偏好。
     current.output.textContent = current.value;
-    const value = current.value;
-    current.i18n.text(current.entropy, () => tr('约 {0} bit', { 0: passwordStrengthBits(value) }));
+    current.i18n.text(current.entropy, () => tr('约 {0} bit', { 0: passwordStrengthBits(current.value) }));
+    current.i18n.text(current.modeLabel, () => tr('长度：{0}', { 0: totalLength() }));
   }
 
   function copyResult(): void {
@@ -258,6 +265,7 @@ export function installPasswordGenerator(rootDocument: Document = document) {
     i18n.attribute(close, "aria-label", () => tr('关闭'));
     head.append(heading, close);
 
+    // 结果始终明文：用户必须核对生成的密码是否符合偏好。
     const result = element("div", "result");
     const output = element("code", "value");
     const entropy = element("small", "");
@@ -265,10 +273,9 @@ export function installPasswordGenerator(rootDocument: Document = document) {
 
     const modeBar = element("div", "modes");
     modeBar.setAttribute("role", "group");
-    i18n.attribute(modeBar, "aria-label", () => tr('模式'));
-    const mode = fieldGeneratorMode(preferences.selectedGenerator);
+    i18n.attribute(modeBar, "aria-label", () => tr('生成类型'));
     const modeButtons = new Map<FieldGeneratorMode, HTMLButtonElement>();
-    for (const candidate of FIELD_GENERATOR_MODES) {
+    for (const candidate of MODE_ORDER) {
       const button = element("button", "mode") as HTMLButtonElement;
       button.type = "button";
       button.setAttribute("aria-pressed", String(candidate === mode));
@@ -277,7 +284,22 @@ export function installPasswordGenerator(rootDocument: Document = document) {
       modeBar.append(button);
     }
 
-    const options = element("div", "options");
+    const countRow = element("div", "count-row");
+    const countInputs: Array<{ key: keyof GeneratorCounts; input: HTMLInputElement }> = [];
+    for (const { key, label } of COUNT_LABELS) {
+      const label_el = element("span", "count-label");
+      i18n.text(label_el, () => tr(label));
+      const input = rootDocument.createElement("input");
+      input.type = "number";
+      input.min = "0";
+      input.max = "32";
+      input.value = String(counts[key]);
+      input.setAttribute("data-count", key);
+      countInputs.push({ key, input });
+      countRow.append(label_el, input);
+    }
+    const modeLabel = element("span", "mode-length");
+    i18n.text(modeLabel, () => tr('长度：{0}', { 0: totalLength() }));
 
     const actions = element("footer", "actions");
     const regenerateButton = element("button", "secondary") as HTMLButtonElement;
@@ -295,33 +317,42 @@ export function installPasswordGenerator(rootDocument: Document = document) {
     const status = element("p", "status");
     status.setAttribute("role", "status");
 
-    surface.append(head, result, modeBar, options, actions, status);
+    surface.append(head, result, modeBar, countRow, actions, status);
     shadow.append(style, surface);
     rootDocument.documentElement.append(host);
 
     const cleanups: Array<() => void> = [() => i18n.dispose(), () => host.remove()];
     const controlSyncs: Array<() => void> = [];
     panel = {
-      host, field, scope, mode,
-      value: generateFromPreferences(preferences, mode),
-      i18n, output, entropy, status, options,
+      host, field, scope,
+      value: generate(),
+      i18n, output, entropy, status, options: countRow, modeLabel,
       cleanups, controlSyncs,
-      refresh: () => { for (const sync of controlSyncs) sync(); }
+      refresh: () => {
+        for (const sync of controlSyncs) sync();
+        renderResult();
+      }
     };
 
     for (const [candidate, button] of modeButtons) {
       button.addEventListener("click", event => {
-        if (!event.isTrusted || !panel || panel.mode === candidate) return;
-        preferences = normalizeGeneratorPreferences({ ...preferences, selectedGenerator: candidate });
-        persist();
-        panel.mode = candidate;
+        if (!event.isTrusted || !panel || mode === candidate) return;
+        setMode(candidate);
         for (const [entry, control] of modeButtons) control.setAttribute("aria-pressed", String(entry === candidate));
-        rebuildOptions();
-        regenerate();
+        renderResult();
       });
     }
 
-    regenerateButton.addEventListener("click", event => { if (event.isTrusted) regenerate(); });
+    for (const { key, input } of countInputs) {
+      input.addEventListener("change", () => commitCount(key, Number(input.value)));
+      controlSyncs.push(() => { input.value = String(counts[key]); });
+    }
+
+    regenerateButton.addEventListener("click", event => {
+      if (!event.isTrusted || !panel) return;
+      panel.value = generate();
+      renderResult();
+    });
     copyButton.addEventListener("click", event => { if (event.isTrusted) copyResult(); });
     fillButton.addEventListener("click", event => { if (event.isTrusted) fillResult(); });
     close.addEventListener("click", event => { if (event.isTrusted) closePanel(); });
@@ -348,235 +379,26 @@ export function installPasswordGenerator(rootDocument: Document = document) {
     // 面板按钮不夺走字段焦点，用户可以继续在页面里打字。
     surface.addEventListener("pointerdown", event => { if (event.isTrusted && event.button === 0) event.preventDefault(); });
 
-    /** 当前模式的控件清单：直接读写共享偏好，任何改动都会重新生成并保存。 */
-    function optionControls(activeMode: FieldGeneratorMode): Array<{ element: HTMLElement; sync: () => void }> {
-      if (activeMode === "SYMBOL") {
-        return [
-          rangeRow("symbolLength", 4, 64),
-          fieldset('字符类型', [
-            checkRow('大写字母', "includeUppercase"),
-            checkRow('小写字母', "includeLowercase"),
-            checkRow('数字', "includeNumbers"),
-            checkRow('符号', "includeSymbols")
-          ]),
-          fieldset('最少数量', [
-            minRow('大写最少数量', "uppercaseMin", "includeUppercase", '大写'),
-            minRow('小写最少数量', "lowercaseMin", "includeLowercase", '小写'),
-            minRow('数字最少数量', "numbersMin", "includeNumbers", '数字'),
-            minRow('符号最少数量', "symbolsMin", "includeSymbols", '符号')
-          ]),
-          symbolSourceControls(),
-          fieldset('可读性', [
-            checkRow('排除 0 O l 1 I', "excludeSimilar"),
-            checkRow('排除模糊符号', "excludeAmbiguous")
-          ])
-        ];
-      }
-      if (activeMode === "PASSWORD") {
-        return [
-          rangeRow("passwordLength", 4, 128),
-          fieldset('选项', [
-            checkRow('首字母大写', "firstLetterUppercase"),
-            checkRow('附加数字', "includeNumbersInPassword"),
-            checkRow('分隔符计入长度', "separatorCountsTowardsLength")
-          ]),
-          textRow('自定义分隔符（可选）', "customSeparator", 8),
-          rangeRow("segmentLength", 0, 20, '分段长度：{0}')
-        ];
-      }
-      if (activeMode === "PIN") return [numberRow('PIN 长度', "pinLength", 1, 128)];
-      return [
-        numberRow('单词数', "passphraseWordCount", 1, 32),
-        textRow('分隔符', "passphraseDelimiter", 8),
-        textRow('自定义单词（可选）', "passphraseCustomWord", 256),
-        fieldset('选项', [
-          checkRow('首字母大写', "passphraseCapitalize"),
-          checkRow('附加数字', "passphraseIncludeNumber")
-        ])
-      ];
-    }
-
-    /** 同步面板里随偏好变化的控件（长度标签、勾选状态、禁用联动等）。 */
-    function renderLength(): void {
-      if (!panel) return;
-      for (const sync of panel.controlSyncs) sync();
-    }
-
-    // ---- 控件工厂：直接读写共享偏好，任何改动都会重新生成并保存 ----
-    function checkRow(label: string, key: keyof GeneratorPreferences): { element: HTMLElement; sync: () => void } {
-      const row = element("label", "check-row");
-      const input = rootDocument.createElement("input");
-      input.type = "checkbox";
-      input.checked = preferences[key] === true;
-      const text = element("span", "");
-      i18n.text(text, () => tr(label));
-      row.append(input, text);
-      input.addEventListener("change", () => commit(key, input.checked));
-      const sync = () => { input.checked = preferences[key] === true; };
-      controlSyncs.push(sync);
-      return { element: row, sync };
-    }
-
-    function minRow(label: string, key: keyof GeneratorPreferences, dependsOn: keyof GeneratorPreferences, dependsText: string): { element: HTMLElement; sync: () => void } {
-      const row = element("label", "check-row");
-      const input = rootDocument.createElement("input");
-      input.type = "number";
-      input.min = "0";
-      input.max = "32";
-      input.value = String(preferences[key]);
-      input.addEventListener("change", () => commit(key, input.value));
-      const text = element("span", "");
-      i18n.text(text, () => tr(dependsText));
-      row.append(input, text);
-      const sync = () => { input.value = String(preferences[key]); input.disabled = preferences[dependsOn] !== true; };
-      controlSyncs.push(sync);
-      return { element: row, sync };
-    }
-
-    function numberRow(label: string, key: keyof GeneratorPreferences, min: number, max: number): { element: HTMLElement; sync: () => void } {
-      const row = element("label", "check-row");
-      const span = element("span", "");
-      i18n.text(span, () => tr(label));
-      const input = rootDocument.createElement("input");
-      input.type = "number";
-      input.min = String(min);
-      input.max = String(max);
-      input.value = String(preferences[key]);
-      row.append(span, input);
-      input.addEventListener("change", () => commit(key, input.value));
-      const sync = () => { input.value = String(preferences[key]); };
-      controlSyncs.push(sync);
-      return { element: row, sync };
-    }
-
-    function textRow(label: string, key: keyof GeneratorPreferences, maxlength: number): { element: HTMLElement; sync: () => void } {
-      const row = element("label", "field-row");
-      const span = element("span", "");
-      i18n.text(span, () => tr(label));
-      const input = rootDocument.createElement("input");
-      input.type = "text";
-      input.maxLength = maxlength;
-      input.value = String(preferences[key] ?? "");
-      row.append(span, input);
-      input.addEventListener("change", () => commit(key, input.value));
-      const sync = () => { input.value = String(preferences[key] ?? ""); };
-      controlSyncs.push(sync);
-      return { element: row, sync };
-    }
-
-    function rangeRow(key: keyof GeneratorPreferences, min: number, max: number, label?: string): { element: HTMLElement; sync: () => void } {
-      const row = element("label", "field-row");
-      const span = element("span", "");
-      const input = rootDocument.createElement("input");
-      input.type = "range";
-      input.min = String(min);
-      input.max = String(max);
-      input.value = String(preferences[key]);
-      if (label) {
-        input.setAttribute("aria-label", tr(label));
-      } else {
-        input.setAttribute("data-length-input", String(key));
-        span.setAttribute("data-length-label", String(key));
-      }
-      const sync = () => {
-        input.value = String(preferences[key]);
-        span.textContent = tr('长度：{0}', { 0: preferences[key] });
-      };
-      controlSyncs.push(sync);
-      row.append(span, input);
-      input.addEventListener("input", () => commit(key, input.value));
-      return { element: row, sync };
-    }
-
-    function fieldset(legend: string, controls: Array<{ element: HTMLElement; sync: () => void }>): { element: HTMLElement; sync: () => void } {
-      const box = element("fieldset", "options-group");
-      const title = element("legend", "");
-      i18n.text(title, () => tr(legend));
-    box.append(title);
-      const syncs: Array<() => void> = [];
-      for (const control of controls) {
-        box.append(control.element);
-        syncs.push(control.sync);
-      }
-      return { element: box, sync: () => { for (const sync of syncs) sync(); } };
-    }
-
-    function symbolSourceControls(): { element: HTMLElement; sync: () => void } {
-      const box = element("div", "options-group");
-      const legend = element("p", "options-legend");
-      i18n.text(legend, () => tr('符号来源'));
-      box.append(legend);
-      const exclusion = element("label", "check-row");
-      const exclusionInput = rootDocument.createElement("input");
-      exclusionInput.type = "radio";
-      exclusionInput.name = "monica-symbol-source";
-      exclusionInput.checked = preferences.useSymbolExclusionMode;
-      exclusion.append(exclusionInput);
-      i18n.text(exclusion, () => tr('排除默认符号'));
-      const custom = element("label", "check-row");
-      const customInput = rootDocument.createElement("input");
-      customInput.type = "radio";
-      customInput.name = "monica-symbol-source";
-      customInput.checked = !preferences.useSymbolExclusionMode;
-      custom.append(customInput);
-      i18n.text(custom, () => tr('自定义符号集'));
-      const grid = element("div", "symbol-grid");
-      for (const symbol of [...DEFAULT_SYMBOLS]) {
-        const chip = element("label", "symbol-chip");
-        const input = rootDocument.createElement("input");
-        input.type = "checkbox";
-        input.checked = !preferences.excludedSymbols.includes(symbol);
-        i18n.attribute(input, "aria-label", () => tr('使用符号 {0}', { 0: symbol }));
-        input.addEventListener("change", () => {
-          const excluded = new Set(preferences.excludedSymbols);
-          if (input.checked) excluded.delete(symbol);
-          else excluded.add(symbol);
-          commit("excludedSymbols", [...excluded].join(""));
-        });
-        chip.append(input);
-        i18n.text(chip, () => symbol);
-        grid.append(chip);
-      }
-      const customSet = textRow('自定义符号集', "customSymbols", 256);
-      box.append(exclusion, custom, grid, customSet.element);
-      const sync = () => {
-        grid.hidden = preferences.useSymbolExclusionMode;
-        customSet.element.hidden = preferences.useSymbolExclusionMode;
-        for (const chip of grid.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')) {
-          const symbol = chip.closest("label")?.textContent || "";
-          chip.checked = !preferences.excludedSymbols.includes(symbol);
-        }
-      };
-      controlSyncs.push(sync);
-      return { element: box, sync };
-    }
-
-    function rebuildOptions(): void {
-      if (!panel) return;
-      panel.options.replaceChildren();
-      for (const control of optionControls(panel.mode)) panel.options.append(control.element);
-      renderLength();
-    }
-
-
-    rebuildOptions();
     renderResult();
     positionPanel();
     fillButton.focus();
   }
 
-  function setPreference(key: keyof GeneratorPreferences, value: unknown): void {
-    preferences = normalizeGeneratorPreferences({ ...preferences, [key]: value });
-    persist();
-    regenerate();
+  function applyEnabled(next: boolean): void {
+    enabled = next;
+    if (!enabled) { closePanel(); clearIcons(); return; }
+    scheduleScan();
   }
 
   function preferenceChanged(changes: Record<string, chrome.storage.StorageChange>, area: string): void {
     if (area !== "local") return;
     if (changes[INLINE_AUTOFILL_ENABLED_KEY]) applyEnabled(inlineAutofillEnabled(changes[INLINE_AUTOFILL_ENABLED_KEY].newValue));
-    if (changes[GENERATOR_PREFERENCES_STORAGE_KEY]) {
-      preferences = normalizeGeneratorPreferences(changes[GENERATOR_PREFERENCES_STORAGE_KEY].newValue);
-      if (panel) regenerate();
+    if (changes[COUNTS_KEY]?.newValue) counts = { ...DEFAULT_GENERATOR_COUNTS, ...(changes[COUNTS_KEY].newValue as GeneratorCounts) };
+    if (changes[MODE_KEY]?.newValue) mode = changes[MODE_KEY].newValue as FieldGeneratorMode;
+    if (panel) {
+      panel.value = generate();
+      renderResult();
+      for (const sync of panel.controlSyncs) sync();
     }
   }
 
@@ -595,20 +417,22 @@ export function installPasswordGenerator(rootDocument: Document = document) {
     observer.observe(rootDocument.documentElement, { childList: true, subtree: true });
   }
 
-  const revision = preferenceRevision;
-  void Promise.all([readInlineAutofillEnabled(), store.load()]).then(([preference, stored]) => {
-    if (disposed || revision !== preferenceRevision) return;
-    preferences = stored;
-    applyEnabled(preference);
-  }).catch(() => undefined);
-  void initializeUiLocale().then(() => { if (enabled) scheduleScan(); }).catch(() => undefined);
+  void Promise.all([
+    chrome.storage.local.get([COUNTS_KEY, MODE_KEY]),
+    readInlineAutofillEnabled(),
+    initializeUiLocale()
+  ]).then(([stored, inlineEnabled]) => {
+    if (disposed) return;
+    if (stored[COUNTS_KEY]) counts = { ...DEFAULT_GENERATOR_COUNTS, ...(stored[COUNTS_KEY] as GeneratorCounts) };
+    if (stored[MODE_KEY]) mode = stored[MODE_KEY] as FieldGeneratorMode;
+    applyEnabled(inlineEnabled);
+  }).catch(() => applyEnabled(true));
 
   return {
     scan: () => scheduleScan(),
     dispose() {
       if (disposed) return;
       disposed = true;
-      preferenceRevision += 1;
       closePanel();
       clearIcons();
       if (frame) view.cancelAnimationFrame(frame);

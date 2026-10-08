@@ -1,5 +1,5 @@
 import { generatePassphrase, generatePassword, generatePin, generateWordPassword } from "./credential-generator";
-import { resolveAllowedSymbols, type GeneratorMode, type GeneratorPreferences } from "./generator-preferences";
+import { DEFAULT_GENERATOR_PREFERENCES, resolveAllowedSymbols, type GeneratorMode, type GeneratorPreferences } from "./generator-preferences";
 
 /**
  * 设置页生成器与页面内生成面板共用的「偏好 → 生成结果」映射，避免两处逻辑漂移。
@@ -23,6 +23,35 @@ export const FIELD_GENERATOR_LENGTH_RANGE: Record<FieldGeneratorMode, { minimum:
   PIN: { minimum: 4, maximum: 32 },
   PASSPHRASE: { minimum: 2, maximum: 12 }
 };
+
+export interface GeneratorCounts {
+  uppercase: number;
+  lowercase: number;
+  digits: number;
+  symbols: number;
+}
+
+export const DEFAULT_GENERATOR_COUNTS: GeneratorCounts = { uppercase: 2, lowercase: 10, digits: 4, symbols: 3 };
+
+/**
+ * 字段内生成器的精简模型：每个字符类型直接用数量控制，不需要单独的开关。
+ * 生成时把数量映射为 generatePassword 的字符集排除和最少数量约束。
+ */
+export function countsToPasswordConfig(counts: GeneratorCounts): import("./credential-generator").PasswordGeneratorConfig {
+  const total = Math.max(counts.uppercase, 0) + Math.max(counts.lowercase, 0) + Math.max(counts.digits, 0) + Math.max(counts.symbols, 0);
+  return {
+    length: Math.max(total, 4),
+    uppercaseChars: counts.uppercase > 0 ? undefined : "",
+    lowercaseChars: counts.lowercase > 0 ? undefined : "",
+    numberChars: counts.digits > 0 ? undefined : "",
+    symbolChars: counts.symbols > 0 ? resolveAllowedSymbols(DEFAULT_GENERATOR_PREFERENCES) : "",
+    uppercaseMin: Math.max(counts.uppercase, 0),
+    lowercaseMin: Math.max(counts.lowercase, 0),
+    numbersMin: Math.max(counts.digits, 0),
+    symbolsMin: Math.max(counts.symbols, 0),
+    excludeSimilar: true
+  };
+}
 
 export function isFieldGeneratorMode(value: unknown): value is FieldGeneratorMode {
   return typeof value === "string" && (FIELD_GENERATOR_MODES as readonly string[]).includes(value);
