@@ -263,6 +263,9 @@ export function installInlineAutofill(handlers: Handlers, rootDocument: Document
       const result = await handlers.query(current.id);
       if (!valid(current, true)) { if (session === current) dismiss(); return; }
       if (!result.enabled || result.sessionId !== current.id) return dismiss();
+      // 无匹配时不弹空面板（浏览器原生行为也是不弹）；TOTP 字段只在候选确有验证码时才有意义。
+      if (result.status === "unlocked" && (result.candidates.length === 0
+        || (current.role === "totp" && !result.candidates.some(item => item.hasTotp)))) return dismiss();
       render(current, result);
     } catch { if (session === current) dismiss(); }
   }

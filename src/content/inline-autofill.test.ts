@@ -123,6 +123,24 @@ describe("inline menu lifecycle and request boundaries", () => {
     const row = shadow!.querySelector(".suggestion") as HTMLButtonElement;
     expect(row.querySelector(".hint")?.textContent).toBe("含验证码");
   });
+  it("stays closed when unlocked with no matches instead of showing an empty panel", async () => {
+    query.mockImplementation(async id => ({ ...result(id), candidates: [], total: 0 }));
+    input().focus();
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(host()).toBeNull();
+  });
+  it("stays closed on a totp field unless a candidate carries a code", async () => {
+    dom.window.document.body.innerHTML = '<form><input id="otp" autocomplete="one-time-code" inputmode="numeric" maxlength="6"></form>';
+    query.mockImplementation(async id => ({ ...result(id), candidates: [{ ...result(id).candidates[0], hasTotp: false }] }));
+    input("otp").focus();
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(host()).toBeNull();
+    query.mockClear();
+    input("otp").blur();
+    query.mockImplementation(async id => ({ ...result(id), candidates: [{ ...result(id).candidates[0], hasTotp: true }] }));
+    input("otp").focus();
+    await vi.waitFor(() => expect(host()).toBeTruthy());
+  });
   it("does not offer existing logins on a registration form", async () => {
     dom.window.document.body.innerHTML = '<form id="register" action="/register"><input id="user" autocomplete="username"><input id="password" type="password" autocomplete="new-password"><input id="confirm" type="password" autocomplete="new-password"></form>';
     input("user").focus();
