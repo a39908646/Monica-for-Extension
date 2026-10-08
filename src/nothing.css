@@ -163,7 +163,7 @@ thead th { font-family: var(--font-data); font-weight: 400; font-size: .75rem; l
 :where(.modal-backdrop, .appearance-modal, .detail-backdrop) { background: rgb(0 0 0 / 75%); backdrop-filter: none; }
 .field > span, .provider-form label > span, .filter-caption { font-size: .75rem; font-weight: 400; letter-spacing: .025em; }
 .field :where(input, textarea, select), .provider-form :where(input, textarea, select) { border: 1px solid var(--app-outline); background: var(--app-surface); border-radius: 8px; }
-.field :where(input, textarea):focus, .provider-form :where(input, textarea):focus { box-shadow: none; outline: 2px solid var(--app-primary); outline-offset: 1px; }
+.field :where(input, textarea):focus, .provider-form :where(input, textarea):focus { outline: none; box-shadow: var(--app-focus-shadow); }
 .boundary-row, .security-note { background: transparent; border: 1px solid var(--app-outline); color: var(--app-muted); }
 .sr-status:not(:empty) { position: static; width: auto; height: auto; clip: auto; clip-path: none; margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--app-outline); border-radius: 8px; font-size: .8125rem; white-space: normal; }
 .login-card { box-shadow: none; border-radius: 16px; }

@@ -340,7 +340,7 @@ m3e-icon-button {
 
 .field input:focus,
 .field select:focus {
-  box-shadow: inset 0 0 0 2px var(--md-sys-color-primary, var(--app-primary));
+  box-shadow: var(--app-focus-shadow);
 }
 
 .form-error {
@@ -548,7 +548,7 @@ main {
 
 .search:focus-within {
   background: var(--md-sys-color-surface-container-highest, var(--app-surface-high));
-  box-shadow: inset 0 0 0 2px var(--md-sys-color-primary, var(--app-primary));
+  box-shadow: var(--app-focus-shadow);
 }
 
 .quick-toolbar {
