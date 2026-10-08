@@ -24,7 +24,9 @@ describe("shared generator presets", () => {
     const lettersOnly = generateFromPreferences(preferences({ symbolLength: 12, includeSymbols: false, includeNumbers: false }));
     expect(lettersOnly).toMatch(/^[A-Za-z]{12}$/);
     const custom = generateFromPreferences(preferences({ symbolLength: 16, useSymbolExclusionMode: false, customSymbols: "$" }));
-    expect(custom.replace(/[^$]/g, "")).toHaveLength(DEFAULT_GENERATOR_PREFERENCES.symbolsMin);
+    // 生成器只保证「最少」符号数：先放够下限，剩余位置从全部字符里随机补，
+    // 因此符号数可以多于下限，这里只能断言下限（原断言等于下限，约 1/5 概率随机失败）。
+    expect(custom.replace(/[^$]/g, "").length).toBeGreaterThanOrEqual(DEFAULT_GENERATOR_PREFERENCES.symbolsMin);
     expect(resolveAllowedSymbols(preferences({ useSymbolExclusionMode: false, customSymbols: "$" }))).toBe("$");
   });
 
