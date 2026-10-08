@@ -23,8 +23,8 @@
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--app-outline) transparent;
-  padding: 32px;
-  scroll-padding-block: 24px;
+  padding: 24px;
+  scroll-padding-block: 20px;
 }
 
 #root .detail-header {
@@ -32,13 +32,13 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin: 0 0 40px;
+  margin: 0 0 20px;
 }
 
 #root .detail-heading { gap: 16px; align-items: flex-start; }
 #root .detail-heading > .row-icon { flex: 0 0 48px; width: 48px; height: 48px; margin-top: 4px; }
 #root .detail-title-block { min-width: 0; }
-#root .detail-title-block h2 { margin: 8px 0 12px; font: 500 var(--detail-display)/1.2 var(--font-ui); letter-spacing: -.035em; overflow-wrap: anywhere; }
+#root .detail-title-block h2 { margin: 6px 0 10px; font: 500 var(--detail-display)/1.2 var(--font-ui); letter-spacing: -.035em; overflow-wrap: anywhere; }
 #root .detail-header > m3e-icon-button { flex: none; }
 #root .detail-eyebrow,
 #root .detail-section-title,
@@ -52,22 +52,39 @@
 
 #root .detail-badges { display: flex; flex-wrap: wrap; gap: 8px; }
 #root .detail-badges > span { border: 1px solid var(--app-outline); border-radius: 4px; padding: 3px 8px; font: 400 var(--detail-caption)/1.5 var(--font-data); color: var(--app-muted); overflow-wrap: anywhere; }
-#root .detail-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px; align-items: start; }
-#root .detail-main { display: grid; min-width: 0; gap: 32px; }
-#root .detail-section { min-width: 0; }
-#root .detail-section-title { margin-bottom: 16px; }
-#root .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin: 0; }
+#root .detail-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+#root .detail-main { display: grid; min-width: 0; gap: 12px; }
+#root .detail-section {
+  min-width: 0;
+  padding: 12px 14px 2px;
+  border: 1px solid var(--app-outline);
+  border-radius: var(--app-shape-card);
+  background: var(--app-surface);
+}
+#root .detail-section-title { margin-bottom: 10px; }
+#root .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; margin: 0; }
 #root .detail-grid > .detail-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-content: start;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  padding: 0 0 16px;
+  padding: 0 0 12px;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--app-outline);
+  /* 比卡片边框更浅，块与块的边界不会被字段分隔线混淆。 */
+  border-bottom: 1px solid color-mix(in srgb, var(--app-outline) 55%, transparent);
   border-radius: 0;
+}
+
+/* 面板够宽时标签在左、值在右：一个字段只占一行，右半边的留白也一起消失。 */
+@container item-detail (min-width: 34rem) {
+  #root .detail-main .detail-grid > .detail-row {
+    grid-template-columns: minmax(0, 8rem) minmax(0, 1fr);
+    gap: 2px 16px;
+    padding: 0 0 10px;
+  }
+  #root .detail-main .detail-row dt { padding-top: 11px; }
 }
 
 #root .detail-row-wide { grid-column: 1 / -1; }
@@ -86,7 +103,7 @@
   align-self: center;
   min-width: 0;
   max-width: 100%;
-  padding-block: 8px;
+  padding-block: 4px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: normal;
@@ -108,19 +125,19 @@
 #root .detail-otp > small { font: 400 var(--detail-caption)/1.5 var(--font-data); }
 #root .detail-otp > .otp-copy-status { flex-basis: 100%; }
 
-#root .detail-note { padding: 0; background: transparent; border: 0; border-radius: 0; gap: 16px; }
+#root .detail-note { gap: 12px; }
 #root .detail-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 #root .detail-section-heading > h3 { margin-bottom: 0; }
 #root .detail-note pre,
-#root .detail-notes-line { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 400 var(--detail-body)/1.8 var(--font-ui); }
+#root .detail-notes-line { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 400 var(--detail-body)/1.7 var(--font-ui); }
 #root .detail-tags { margin-top: 8px; gap: 8px; }
 #root .detail-tag { padding: 4px 8px; border: 1px solid var(--app-outline); border-radius: 4px; color: var(--app-muted); font: 400 var(--detail-caption)/1.5 var(--font-data); overflow-wrap: anywhere; }
 #root .detail-context-note { margin: 0; padding: 16px 0 0; border-top: 1px solid var(--app-outline); font-size: var(--detail-caption); line-height: 1.7; color: var(--app-muted); }
-#root .detail-empty { margin: 0; padding-block: 24px; font-size: var(--detail-body); color: var(--app-muted); }
-#root .detail-sidebar { min-width: 0; padding-top: 24px; border-top: 1px solid var(--app-outline); }
-#root .detail-meta { grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 24px; }
+#root .detail-empty { margin: 0; padding-block: 16px; font-size: var(--detail-body); color: var(--app-muted); }
+#root .detail-sidebar { min-width: 0; padding-top: 16px; border-top: 1px solid var(--app-outline); }
+#root .detail-meta { grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 16px; }
 #root .detail-meta > .detail-row { padding: 0; border: 0; }
-#root .detail-meta dd { display: block; font-size: var(--detail-caption); line-height: 1.8; overflow-wrap: anywhere; }
+#root .detail-meta dd { display: block; font-size: var(--detail-caption); line-height: 1.7; overflow-wrap: anywhere; }
 #root .detail-meta time { font-family: var(--font-data); }
 
 #root .detail-dialog > .detail-actions {
@@ -141,14 +158,14 @@
 #root .detail-action-buttons > m3e-button { min-width: 100px; }
 
 @container item-detail (min-width: 50rem) {
-  #root .detail-body { grid-template-columns: minmax(0, 1fr) 196px; gap: 32px; }
+  #root .detail-body { grid-template-columns: minmax(0, 1fr) 196px; gap: 24px; }
   #root .detail-sidebar { padding: 0 0 0 24px; border-top: 0; border-left: 1px solid var(--app-outline); }
   #root .detail-meta { grid-template-columns: minmax(0, 1fr); }
 }
 
 @container item-detail (max-width: 36rem) {
-  #root .detail-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  #root .detail-header { margin-bottom: 32px; }
+  #root .detail-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  #root .detail-header { margin-bottom: 16px; }
   #root .detail-heading > .row-icon { display: none; }
 }
 
@@ -162,7 +179,7 @@
 
 @media (max-width: 560px) {
   #root .detail-dialog { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
-  #root .detail-scroll { padding: 24px 20px; }
+  #root .detail-scroll { padding: 20px 16px; }
   #root .detail-dialog > .detail-actions { padding: 12px 20px; }
 }
 
@@ -187,7 +204,7 @@
 #root :is(.attachment-row-main, .keepass-history-copy, .send-list-copy) strong { font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
 #root .send-detail .detail-heading { align-items: flex-start; gap: 16px; }
 #root .send-detail .detail-title h2 { font: 500 clamp(1.25rem, 2.5vw, 1.5rem)/1.3 var(--font-ui); letter-spacing: -.025em; }
-#root .send-detail .detail-section { padding-block: 24px; }
+#root .send-detail .detail-section { padding-block: 12px; }
 #root .send-detail .section-heading h3 { font: 400 .75rem/1.5 var(--font-data); color: var(--app-muted); letter-spacing: .065em; text-transform: uppercase; }
 #root .send-detail .share-row { min-width: 0; gap: 12px; flex-wrap: wrap; }
 #root .send-detail .detail-actions { gap: 12px; flex-wrap: wrap; }

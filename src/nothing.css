@@ -16,6 +16,10 @@
   --app-shape-dialog: 16px;
   --app-content-max: 1440px;
   --motion-ease: cubic-bezier(.25, .1, .25, 1);
+  /* 焦点环：贴着控件、颜色收敛，避免在小图标按钮外形成一圈又粗又远的黑环。 */
+  --app-focus-color: color-mix(in srgb, var(--app-primary) 82%, transparent);
+  --app-focus-ring: 2px solid var(--app-focus-color);
+  --app-focus-offset: 1px;
   font-family: var(--font-ui);
 }
 
@@ -39,6 +43,8 @@ m3e-theme {
   --md-sys-elevation-level3: none;
   --md-sys-elevation-level4: none;
   --md-sys-elevation-level5: none;
+  /* 组件自带的焦点环：颜色跟应用一致，形状由组件自己保证。 */
+  --m3e-focus-ring-color: var(--app-focus-color);
 }
 :root[data-palette='nothing'] m3e-theme {
   --md-sys-color-primary: var(--app-primary);
@@ -79,6 +85,12 @@ m3e-card {
   --m3e-outlined-card-outline-color: var(--app-outline);
   box-shadow: none;
 }
+/* 焦点环粗细要在宿主上覆盖：组件在 :host 里写死了默认值，主题层盖不住。 */
+m3e-button,
+m3e-icon-button,
+m3e-chip {
+  --m3e-focus-ring-thickness: 2px;
+}
 m3e-button {
   max-inline-size: 100%;
   --m3e-button-shape-round: 999px;
@@ -90,7 +102,9 @@ m3e-button {
   min-height: 44px;
 }
 m3e-icon { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
-:where(button, m3e-button, a, input, select, textarea):focus-visible { outline: 2px solid var(--app-primary); outline-offset: 3px; }
+:where(button, a, input, select, textarea):focus-visible { outline: var(--app-focus-ring); outline-offset: var(--app-focus-offset); }
+/* m3e 组件自带随形状走的焦点环：在宿主盒子上再画一圈会在圆形按钮/药丸按钮外留下方框。 */
+:is(m3e-button, m3e-icon-button, m3e-chip)[tabindex]:focus-visible { outline: none; }
 :where(button, m3e-button, .nav-item, .credential-card, .item-card):hover { transform: none; }
 
 #root { --app-drawer-width: clamp(240px, 17rem, 320px); }

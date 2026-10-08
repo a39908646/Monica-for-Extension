@@ -110,8 +110,8 @@ select:focus-visible,
 textarea:focus-visible,
 a:focus-visible,
 [tabindex]:focus-visible {
-  outline: 3px solid var(--app-primary);
-  outline-offset: 3px;
+  outline: var(--app-focus-ring, 2px solid var(--app-primary));
+  outline-offset: var(--app-focus-offset, 1px);
 }
 
 button,
@@ -1117,8 +1117,8 @@ tbody tr:hover td {
 }
 
 .item-card-main:focus-visible {
-  outline: 3px solid var(--app-primary);
-  outline-offset: -3px;
+  outline: var(--app-focus-ring, 2px solid var(--app-primary));
+  outline-offset: -2px;
   border-radius: var(--app-shape-card);
 }
 

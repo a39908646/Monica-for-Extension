@@ -460,7 +460,7 @@ button.row-title:hover {
 }
 
 button.row-title:focus-visible {
-  outline: 3px solid var(--app-primary);
+  outline: var(--app-focus-ring);
   outline-offset: -3px;
 }
 
@@ -531,7 +531,7 @@ button.row-title:focus-visible {
 }
 
 .login-type-segments input:focus-visible + span {
-  outline: 3px solid var(--md-sys-color-primary, var(--app-primary));
+  outline: var(--app-focus-ring);
   outline-offset: 1px;
 }
 
@@ -634,7 +634,7 @@ button.row-title:focus-visible {
 }
 
 .barcode-render-modes label:has(input:focus-visible) {
-  outline: 3px solid var(--m3e-color-primary, var(--app-primary));
+  outline: var(--app-focus-ring);
   outline-offset: 1px;
 }
 

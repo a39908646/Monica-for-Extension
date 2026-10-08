@@ -15,7 +15,7 @@
 .vault-home button:disabled { opacity: .45; cursor: default; }
 .vault-home button:not(:disabled):hover { background: var(--app-surface-high); }
 .vault-home .home-button-primary:not(:disabled):hover { background: var(--app-text); opacity: .85; }
-.vault-home :where(button, input, select, [tabindex='-1']):focus-visible { outline: 2px solid var(--app-text); outline-offset: 3px; }
+.vault-home :where(button, input, select, [tabindex='-1']):focus-visible { outline: var(--app-focus-ring); outline-offset: var(--app-focus-offset); }
 .home-count { flex-shrink: 0; font: 400 .75rem/1.5 var(--font-data); color: var(--app-muted); font-variant-numeric: tabular-nums; }
 .home-status { font: 400 .75rem/1.6 var(--font-data); color: var(--app-muted); padding: 0 0 12px; overflow-wrap: anywhere; }
 .home-error { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; color: var(--md-sys-color-error, #ba151c); overflow-wrap: anywhere; }
