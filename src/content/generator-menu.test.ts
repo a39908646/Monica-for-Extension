@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GENERATOR_ICON_ATTRIBUTE, GENERATOR_PANEL_HOST_ID, installPasswordGenerator } from "./generator-menu";
 
 vi.mock("../i18n/runtime", () => ({
-  tr: (source: string) => source,
+  tr: (source: string, params?: Record<string, unknown>) =>
+    params ? source.replace(/\{(\w+)\}/g, (_, key) => String(params[key] ?? `{${key}}`)) : source,
   getUiLocale: () => "en",
   initializeUiLocale: async () => undefined,
   observeUiLocale: () => () => undefined
@@ -123,14 +124,12 @@ describe("in-field password generator", () => {
   it("opens a masked panel, regenerates, and fills both password fields", async () => {
     const panel = await openPanel();
     const output = panel.querySelector("code")!;
-    expect(output.textContent).toMatch(/^•+$/);
-
+    // 结果始终明文：用户必须核对生成的密码是否符合偏好。
     const first = revealedValue(panel);
     expect(first).toMatch(/^[\S]{4,}$/);
     expect(output.textContent).toBe(first);
 
     trustedClick(buttonByText(panel, "重新生成"));
-    // 重新生成会恢复到隐藏状态，再点一次显示读真实值。
     const second = revealedValue(panel);
     expect(second).not.toBe(first);
     expect(second).not.toMatch(/^•+$/);
@@ -149,13 +148,33 @@ describe("in-field password generator", () => {
     expect(dom.window.document.activeElement).toBe(field("password"));
   });
 
+  it("exposes the full preference controls on the field panel", async () => {
+    const panel = await openPanel();
+    const options = panel.querySelector(".options")!;
+    expect(options.textContent).toContain("字符类型");
+    expect(options.textContent).toContain("最少数量");
+    expect(options.textContent).toContain("符号来源");
+    expect(options.textContent).toContain("可读性");
+    // 4 字符类型 + 2 可读性 checkbox，加上隐藏的符号 chips。
+    expect(options.querySelectorAll("input[type='checkbox']").length).toBeGreaterThanOrEqual(6);
+    expect(options.querySelectorAll(".symbol-chip").length).toBeGreaterThanOrEqual(20);
+    expect((options.querySelector("input[data-length-input='symbolLength']") as HTMLInputElement).value).toBe("20");
+    const uppercase = [...options.querySelectorAll<HTMLInputElement>("input[type='checkbox']")].find(input => input.closest("label")?.textContent === "大写字母")!;
+    uppercase.checked = false;
+    uppercase.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    await vi.waitFor(() => expect(revealedValue(panel)).not.toMatch(/[A-Z]/));
+  });
+
   it("persists the mode and length changes into the shared preferences", async () => {
     const panel = await openPanel();
     trustedClick(buttonByText(panel, "PIN"));
     await vi.waitFor(() => expect((storage[PREFERENCES_KEY] as { selectedGenerator: string }).selectedGenerator).toBe("PIN"));
     expect(revealedValue(panel)).toMatch(/^[0-9]{6}$/);
 
-    trustedClick(buttonByLabel(panel, "加长一个字符"));
+    // PIN 模式没有 +/- 按钮，长度通过数字输入框调整。
+    const pinInput = panel.querySelector<HTMLInputElement>("input[type='number']")!;
+    pinInput.value = "7";
+    pinInput.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
     await vi.waitFor(() => expect((storage[PREFERENCES_KEY] as { pinLength: number }).pinLength).toBe(7));
     expect(revealedValue(panel)).toMatch(/^[0-9]{7}$/);
 
