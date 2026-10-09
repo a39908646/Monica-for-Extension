@@ -1,6 +1,6 @@
 import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
-import { captureCredentialInput, captureRootForEvent } from "./credential-capture";
+import { captureCredentialInput, captureRootForEvent, snapshotSubmittedValues } from "./credential-capture";
 
 function page(html: string) {
   return new JSDOM(html, { url: "https://accounts.example.com/login", pretendToBeVisual: true });
@@ -76,5 +76,25 @@ describe("credential submit capture", () => {
   it("keeps short asterisk-free passwords and short real passwords", () => {
     const dom = page('<form><input autocomplete="username" value="joy"><input type="password" value="a*b"></form>');
     expect(captureCredentialInput(dom.window.document.querySelector("form")!, dom.window.document, dom.window.location)).toMatchObject({ password: "a*b" });
+  });
+
+  it("prefers the values snapshotted when the submit started over fields the page rewrote", () => {
+    // Discuz 的 pwmd5 会在站点自己的 onsubmit 里把密码换成 MD5 摘要；
+    // 捕获要延后到事件分派结束后才能判断 defaultPrevented，那时密码框已经不是用户输入的值。
+    const dom = page('<form><input autocomplete="username" value="joy@example.com"><input type="password" value="real-secret"></form>');
+    const form = dom.window.document.querySelector("form")!;
+    const submitted = snapshotSubmittedValues(form);
+    form.querySelector<HTMLInputElement>('input[type="password"]')!.value = "6c6034b26db5935f58409ea68075422e";
+    form.querySelector<HTMLInputElement>('input[autocomplete="username"]')!.value = "rewritten";
+    expect(captureCredentialInput(form, dom.window.document, dom.window.location, "", submitted)).toMatchObject({
+      username: "joy@example.com",
+      password: "real-secret"
+    });
+  });
+
+  it("falls back to the live field when nothing was snapshotted", () => {
+    const dom = page('<form><input autocomplete="username" value="joy"><input type="password" value="live-secret"></form>');
+    const form = dom.window.document.querySelector("form")!;
+    expect(captureCredentialInput(form, dom.window.document, dom.window.location, "", snapshotSubmittedValues(form))).toMatchObject({ password: "live-secret" });
   });
 });

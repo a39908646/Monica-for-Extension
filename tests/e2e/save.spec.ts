@@ -218,6 +218,96 @@ test("save prompt dismisses a submitted login without writing it", async ({}, te
   }
 });
 
+// Discuz 家族（3DM、NGA 等论坛）的登录表单在自己的 onsubmit 里调用 pwmd5()，把密码框的值换成 MD5 摘要，
+// 并且把「注册」「找回密码」写成表单内的跳转链接 —— 两者都不能让一次普通登录变成「更新密码」。
+// 站点改写后的值不是用户输入的密码：既不能拿去比对「密码没变」，更不能写进密码库。
+async function routeDiscuzLoginPage(context: BrowserContext): Promise<void> {
+  await context.route("https://discuz.example.test/**", (route) => route.fulfill({
+    contentType: "text/html; charset=utf-8",
+    body: `<!doctype html><title>登录 - Discuz 论坛</title>
+      <form id="loginform" method="post" autocomplete="off" onsubmit="pwmd5();return false;" action="member.php?mod=logging&action=login">
+        <input type="text" name="username" id="username" autocomplete="off">
+        <input type="password" name="password" id="password">
+        <a href="member.php?mod=register">注册</a>
+        <a href="member.php?mod=logging&amp;action=lostpasswd">找回密码</a>
+        <button type="submit">登录</button>
+      </form>
+      <script>
+        // 与 Discuz 的 pwmd5 同形：提交前把密码框替换成十六进制摘要。
+        function pwmd5() {
+          var field = document.getElementById("password");
+          field.value = Array.from(field.value).map(function (character) {
+            return character.charCodeAt(0).toString(16).padStart(2, "0");
+          }).join("");
+        }
+      </script>`
+  }));
+}
+
+function discuzSeedItem(now: string, password: string) {
+  return {
+    id: "discuz-3dm-login",
+    kind: "login",
+    title: "3DM",
+    favorite: false,
+    notes: "",
+    createdAt: now,
+    updatedAt: now,
+    providerRefs: [],
+    username: "a39908646",
+    password,
+    uris: ["https://discuz.example.test"],
+    customFields: []
+  };
+}
+
+test("a page that rewrites the password before submitting does not prompt when the stored password repeats", async ({}, testInfo) => {
+  let context: BrowserContext | undefined;
+  try {
+    const launched = await launchExtension(testInfo, "discuz-unchanged-profile");
+    context = launched.context;
+    expect(await launched.manager.evaluate(async (item) => chrome.runtime.sendMessage({ type: "VAULT_UPSERT_ITEM", item }), discuzSeedItem(new Date().toISOString(), "MySecretPass123"))).toMatchObject({ ok: true });
+    await routeDiscuzLoginPage(context);
+    const page = await context.newPage();
+    await page.goto("https://discuz.example.test/member.php?mod=logging&action=login");
+    await page.locator("#username").fill("a39908646");
+    await page.locator("#password").fill("MySecretPass123");
+    await page.getByRole("button", { name: "登录" }).click();
+
+    // 站点确实改写了密码框：否则这个用例证明不了快照起了作用。
+    await expect.poll(() => page.locator("#password").inputValue()).not.toBe("MySecretPass123");
+    await page.waitForTimeout(2000);
+    expect(await page.locator("#monica-save-prompt-host").count()).toBe(0);
+    expect((await listItems(launched.manager)).map((item) => item.password)).toEqual(["MySecretPass123"]);
+  } finally {
+    await context?.close();
+  }
+});
+
+test("a page that rewrites the password before submitting stores the submitted password, not the rewritten one", async ({}, testInfo) => {
+  let context: BrowserContext | undefined;
+  try {
+    const launched = await launchExtension(testInfo, "discuz-update-profile");
+    context = launched.context;
+    expect(await launched.manager.evaluate(async (item) => chrome.runtime.sendMessage({ type: "VAULT_UPSERT_ITEM", item }), discuzSeedItem(new Date().toISOString(), "old-secret"))).toMatchObject({ ok: true });
+    await routeDiscuzLoginPage(context);
+    const page = await context.newPage();
+    await page.goto("https://discuz.example.test/member.php?mod=logging&action=login");
+    await page.locator("#username").fill("a39908646");
+    await page.locator("#password").fill("MySecretPass123");
+    await page.getByRole("button", { name: "登录" }).click();
+
+    await confirmSavePrompt(page);
+    await expect.poll(async () => (await listItems(launched.manager)).find((item) => item.id === "discuz-3dm-login")?.password).toBe("MySecretPass123");
+    const items = await listItems(launched.manager);
+    expect(items).toHaveLength(1);
+    // 写入的必须是用户提交的密码，而不是站点改写后的十六进制摘要。
+    expect(items[0].password).toBe("MySecretPass123");
+  } finally {
+    await context?.close();
+  }
+});
+
 function flattenDomNodes(root: Record<string, any>): Array<Record<string, any>> {
   const result: Array<Record<string, any>> = [];
   const visit = (node: Record<string, any> | undefined) => {

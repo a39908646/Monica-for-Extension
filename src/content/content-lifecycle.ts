@@ -1,5 +1,5 @@
 import type { CredentialCaptureInput } from "../runtime/messages";
-import { captureCredentialInput, captureRootForEvent, captureUsernameInput } from "./credential-capture";
+import { captureCredentialInput, captureRootForEvent, captureUsernameInput, snapshotSubmittedValues, type SubmittedFieldValues } from "./credential-capture";
 import { openShadowRoots } from "./composed-dom";
 import { OPEN_SHADOW_ROOT_EVENT } from "./shadow-bridge";
 
@@ -55,9 +55,9 @@ export function installCredentialCapture(options: CaptureOptions): () => void {
     return usernameContext.value;
   };
 
-  const capture = (root: ParentNode): void => {
+  const capture = (root: ParentNode, submittedValues?: SubmittedFieldValues): void => {
     rememberUsername(root);
-    const candidate = captureCredentialInput(root, rootDocument, pageLocation, recentUsername());
+    const candidate = captureCredentialInput(root, rootDocument, pageLocation, recentUsername(), submittedValues);
     if (candidate) {
       usernameContext = undefined;
       void options.onCandidate(candidate, root);
@@ -85,6 +85,9 @@ export function installCredentialCapture(options: CaptureOptions): () => void {
     // 延迟到事件分派完成后检查。
     handledEvents.add(event);
     const root = captureRootForEvent(deepestEventElement(event, view), rootDocument);
+    // 必须在事件分派期间同步取值：页面自己的 submit 处理器会在冒泡阶段改写密码框
+    // （Discuz 的 pwmd5 把密码换成 MD5 摘要），而捕获要延后到 defaultPrevented 确定之后。
+    const submittedValues = snapshotSubmittedValues(root);
     // 登录按钮点击会先触发 click 再触发 submit：点击路径已经排好捕获，这里既不取消也不重复。
     const clickHandled = clickTimers.has(root);
     // 被拦截的 submit（验证码刷新、模拟提交等）只有明确由登录控件发起时才算真实提交，
@@ -95,7 +98,7 @@ export function installCredentialCapture(options: CaptureOptions): () => void {
       activeTimers.delete(timer);
       if (stopped || clickHandled) return;
       if (event.defaultPrevented && !credentialSubmit) return;
-      capture(root);
+      capture(root, submittedValues);
     }, 0);
     activeTimers.add(timer);
   };
@@ -110,12 +113,14 @@ export function installCredentialCapture(options: CaptureOptions): () => void {
     if (!target || !isCredentialSubmissionControl(target)) return;
     handledEvents.add(event);
     const root = captureRootForEvent(target, rootDocument);
+    // 点击阶段同步取值：站点可能在这个点击的默认动作里（form onsubmit）改写密码框。
+    const submittedValues = snapshotSubmittedValues(root);
     rememberUsername(root);
     clearClickFallback(root);
     const timer = view.setTimeout(() => {
       activeTimers.delete(timer);
       clickTimers.delete(root);
-      if (!stopped) capture(root);
+      if (!stopped) capture(root, submittedValues);
     }, 0);
     clickTimers.set(root, timer);
     activeTimers.add(timer);

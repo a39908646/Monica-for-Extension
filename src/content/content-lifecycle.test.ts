@@ -90,6 +90,38 @@ describe("dynamic credential capture lifecycle", () => {
     stop();
   });
 
+  it("captures the submitted password when the page rewrites the field in its own submit handler", async () => {
+    // Discuz 的 pwmd5 就是这种形态：站点在冒泡阶段的 onsubmit 里把密码换成 32 位 MD5 摘要。
+    // 捕获必须使用提交瞬间的值，否则拿到的摘要在库里永远匹配不上，每次登录都弹「更新密码」。
+    const dom = page('<form id="login"><input autocomplete="username" value="a39908646"><input type="password" value="real-secret"><button type="submit">登录</button></form>');
+    const form = dom.window.document.querySelector("form") as HTMLFormElement;
+    const password = form.querySelector<HTMLInputElement>('input[type="password"]')!;
+    const candidates: CredentialCaptureInput[] = [];
+    const stop = installCredentialCapture({ rootDocument: dom.window.document, pageLocation: dom.window.location, onCandidate: (candidate) => { candidates.push(candidate); } });
+    form.addEventListener("submit", () => { password.value = "6c6034b26db5935f58409ea68075422e"; });
+
+    submit(dom, form);
+    await settle(dom);
+
+    expect(candidates).toEqual([expect.objectContaining({ username: "a39908646", password: "real-secret" })]);
+    stop();
+  });
+
+  it("captures the submitted password when the page rewrites the field on the login click", async () => {
+    const dom = page('<form id="login"><input autocomplete="username" value="joy"><input type="password" value="click-secret"><button type="submit">Sign in</button></form>');
+    const form = dom.window.document.querySelector("form") as HTMLFormElement;
+    const password = form.querySelector<HTMLInputElement>('input[type="password"]')!;
+    const candidates: CredentialCaptureInput[] = [];
+    const stop = installCredentialCapture({ rootDocument: dom.window.document, pageLocation: dom.window.location, onCandidate: (candidate) => { candidates.push(candidate); } });
+    form.addEventListener("click", () => { password.value = "mangled-digest"; });
+
+    click(dom, form.querySelector("button")!);
+    await settle(dom);
+
+    expect(candidates).toEqual([expect.objectContaining({ username: "joy", password: "click-secret" })]);
+    stop();
+  });
+
   it("carries only a recent username across a username-first password-second SPA flow", async () => {
     const dom = page();
     const app = dom.window.document.querySelector("#app")!;
